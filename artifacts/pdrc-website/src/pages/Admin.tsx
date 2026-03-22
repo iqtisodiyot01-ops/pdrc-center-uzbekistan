@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/use-store";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Settings, ShieldAlert } from "lucide-react";
+import { ShieldAlert, Settings } from "lucide-react";
 import { AdminLayout, type AdminSection, hasPermission } from "@/components/admin/AdminLayout";
 import { DashboardSection } from "@/components/admin/DashboardSection";
 import { OrdersSection } from "@/components/admin/OrdersSection";
@@ -14,6 +14,8 @@ import { AdminsSection } from "@/components/admin/AdminsSection";
 import { SettingsSection } from "@/components/admin/SettingsSection";
 import { ContentSection } from "@/components/admin/ContentSection";
 import { CategoriesSection } from "@/components/admin/CategoriesSection";
+import { ContactInfoSection } from "@/components/admin/ContactInfoSection";
+import { SiteTextsSection } from "@/components/admin/SiteTextsSection";
 
 function PermissionDenied() {
   const { lang } = useAppStore();
@@ -252,6 +254,11 @@ export default function Admin() {
         return <FinancesSection />;
       case "admins":
         return <AdminsSection />;
+      case "contactInfo":
+        return <ContactInfoSection />;
+      case "siteTexts":
+        if (user?.role !== "superadmin") return <PermissionDenied />;
+        return <SiteTextsSection />;
       case "settings":
         return <SettingsSection />;
       default:

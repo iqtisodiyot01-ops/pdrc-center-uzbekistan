@@ -1,8 +1,11 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "./components/layout/AppLayout";
+import { useAppStore } from "@/store/use-store";
+import { api } from "@/lib/api";
+import { useEffect } from "react";
 import NotFound from "@/pages/not-found";
 
 // Pages
@@ -30,6 +33,25 @@ const queryClient = new QueryClient({
     }
   }
 });
+
+function SiteTextsLoader() {
+  const setSiteTexts = useAppStore((s) => s.setSiteTexts);
+  const { data } = useQuery<Record<string, unknown>>({
+    queryKey: ["site-settings"],
+    queryFn: () => api.get<Record<string, unknown>>("/site-settings"),
+    staleTime: 5 * 60_000,
+  });
+  const siteTextsJson = data?.siteTexts ? JSON.stringify(data.siteTexts) : null;
+  useEffect(() => {
+    if (siteTextsJson) {
+      try {
+        setSiteTexts(JSON.parse(siteTextsJson));
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteTextsJson]);
+  return null;
+}
 
 function Router() {
   return (
@@ -62,6 +84,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <SiteTextsLoader />
           <Router />
         </WouterRouter>
         <Toaster />

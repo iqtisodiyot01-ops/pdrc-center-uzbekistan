@@ -109,6 +109,25 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   });
 });
 
+router.put("/auth/change-password", requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword || newPassword.length < 6) {
+    res.status(400).json({ error: "Bad Request", message: "Invalid input" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "Not Found" }); return; }
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) { res.status(401).json({ error: "Unauthorized", message: "Current password is incorrect" }); return; }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash: newHash }).where(eq(usersTable.id, user.id));
+
+  res.json({ success: true, message: "Password changed successfully" });
+});
+
 router.post("/auth/logout", (_req, res) => {
   res.json({ success: true, message: "Logged out successfully" });
 });

@@ -573,14 +573,34 @@ export const translations = {
 export type Translations = typeof translations.en;
 export type Language = keyof typeof translations;
 
+function deepMerge<T extends Record<string, unknown>>(base: T, overrides: Record<string, unknown>): T {
+  const result = { ...base } as Record<string, unknown>;
+  for (const key of Object.keys(overrides)) {
+    const ov = overrides[key];
+    const bv = base[key as keyof T];
+    if (ov && typeof ov === "object" && !Array.isArray(ov) && bv && typeof bv === "object") {
+      result[key] = deepMerge(bv as Record<string, unknown>, ov as Record<string, unknown>);
+    } else if (ov !== undefined && ov !== "") {
+      result[key] = ov;
+    }
+  }
+  return result as T;
+}
+
 export function useTranslation() {
-  const lang = useAppStore((state: { lang: Language }) => state.lang) as Language;
+  const l = useAppStore((state) => state.lang) as Language;
+  const siteTexts = useAppStore((state) => state.siteTexts);
+
+  const base = translations[l];
+  const overrides = siteTexts?.[l];
+  const t = overrides ? deepMerge(base as unknown as Record<string, unknown>, overrides as Record<string, unknown>) as typeof base : base;
+
   return {
-    t: translations[lang],
-    lang,
+    t,
+    lang: l,
     loc: (obj: unknown, field: string): string => {
       if (!obj || typeof obj !== "object") return "";
-      const suffix = (lang.charAt(0).toUpperCase() + lang.slice(1)) as "Uz" | "En" | "Ru";
+      const suffix = (l.charAt(0).toUpperCase() + l.slice(1)) as "Uz" | "En" | "Ru";
       const key = `${field}${suffix}`;
       const record = obj as Record<string, unknown>;
       const val = record[key] ?? record[field];

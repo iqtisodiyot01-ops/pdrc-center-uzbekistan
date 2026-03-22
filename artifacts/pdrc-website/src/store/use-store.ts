@@ -23,6 +23,8 @@ interface AppState {
   logout: () => void;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
+  siteTexts: Record<string, Record<string, Record<string, string>>> | null;
+  setSiteTexts: (texts: Record<string, Record<string, Record<string, string>>>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -37,6 +39,8 @@ export const useAppStore = create<AppState>()(
       logout: () => set({ token: null, user: null }),
       cartOpen: false,
       setCartOpen: (open) => set({ cartOpen: open }),
+      siteTexts: null,
+      setSiteTexts: (texts) => set({ siteTexts: texts }),
     }),
     {
       name: "pdrc-storage",

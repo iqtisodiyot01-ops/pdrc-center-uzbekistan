@@ -4,14 +4,14 @@ import {
   LayoutDashboard, Package, MessageSquare, Wrench, ShoppingCart,
   GraduationCap, FileText, Users, Image, Star, Megaphone,
   DollarSign, Settings, ChevronLeft, ChevronRight, Menu, LogOut, Shield,
-  Calendar, Tag,
+  Calendar, Tag, Phone, Type, ExternalLink,
 } from "lucide-react";
 
 export type AdminSection =
   | "dashboard" | "orders" | "messages" | "bookings"
   | "products" | "categories" | "services" | "courses" | "articles"
   | "gallery" | "reviews" | "advertisements" | "finances"
-  | "admins" | "settings";
+  | "admins" | "settings" | "contactInfo" | "siteTexts";
 
 const PERMISSION_MAP: Record<AdminSection, string> = {
   dashboard: "dashboard",
@@ -28,6 +28,8 @@ const PERMISSION_MAP: Record<AdminSection, string> = {
   advertisements: "advertisements",
   finances: "finances",
   admins: "admins",
+  contactInfo: "settings",
+  siteTexts: "settings",
   settings: "settings",
 };
 
@@ -91,6 +93,8 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
       label: lang === "uz" ? "Tizim" : lang === "ru" ? "\u0421\u0438\u0441\u0442\u0435\u043c\u0430" : "System",
       items: [
         { id: "admins" as AdminSection, label: lang === "uz" ? "Adminlar" : lang === "ru" ? "\u0410\u0434\u043c\u0438\u043d\u044b" : "Admins", icon: Shield },
+        { id: "contactInfo" as AdminSection, label: lang === "uz" ? "Raqamlar & Havolalar" : lang === "ru" ? "Номера & Ссылки" : "Contacts & Links", icon: Phone },
+        { id: "siteTexts" as AdminSection, label: lang === "uz" ? "Sayt matnlari" : lang === "ru" ? "Тексты сайта" : "Site Texts", icon: Type, superAdminOnly: true },
         { id: "settings" as AdminSection, label: lang === "uz" ? "Sozlamalar" : lang === "ru" ? "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438" : "Settings", icon: Settings },
       ],
     },
@@ -110,6 +114,20 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
         </button>
       </div>
 
+      {/* Go to site button */}
+      <div className={`px-3 pt-3 ${collapsed ? "flex justify-center" : ""}`}>
+        <a
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 hover:text-white transition-all border border-blue-600/30 ${collapsed ? "justify-center w-10 h-10" : "w-full"}`}
+          title={lang === "uz" ? "Saytga o'tish" : lang === "ru" ? "Перейти на сайт" : "View Site"}
+        >
+          <ExternalLink size={14} className="shrink-0" />
+          {!collapsed && <span>{lang === "uz" ? "Saytga o'tish" : lang === "ru" ? "Перейти на сайт" : "View Site"}</span>}
+        </a>
+      </div>
+
       <div className="flex-1 overflow-y-auto py-3 space-y-4">
         {menuGroups.map((group) => (
           <div key={group.label}>
@@ -119,7 +137,7 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
               </div>
             )}
             <div className="space-y-0.5 px-2">
-              {group.items.map((item) => {
+              {group.items.filter((item) => !("superAdminOnly" in item && item.superAdminOnly && user?.role !== "superadmin")).map((item) => {
                 const isActive = activeSection === item.id;
                 const Icon = item.icon;
                 const permitted = hasPermission(user, item.id);
@@ -143,9 +161,9 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
                     {!collapsed && (
                       <>
                         <span className="flex-1 text-left truncate">{item.label}</span>
-                        {item.badge && item.badge > 0 ? (
+                        {("badge" in item) && item.badge && (item.badge as number) > 0 ? (
                           <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                            {item.badge}
+                            {item.badge as number}
                           </span>
                         ) : null}
                         {!permitted && (

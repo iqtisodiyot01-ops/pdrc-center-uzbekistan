@@ -2,6 +2,17 @@
 
 Paintless Dent Repair markazining to'liq veb-sayti. React + TypeScript, pnpm monorepo arxitekturasida qurilgan.
 
+## Admin panel bo'limlari (superadmin uchun)
+- **Raqamlar & Havolalar** (`contactInfo`) — Barcha telefon raqamlar va ijtimoiy tarmoq havolalari
+- **Sayt matnlari** (`siteTexts`) — Saytdagi barcha matnlarni sahifa bo'yicha tahrirlash (DB override'lar)
+- **Sozlamalar** — Ish vaqti, manzil + **Parol o'zgartirish**
+- Admin panelda **"Saytga o'tish"** tugmasi sidebar tepasida
+
+## i18n override arxitekturasi
+- Matn override'lari `siteSettings` DB jadvaliga `siteTexts` kalit ostida saqlanadi
+- `App.tsx` dagi `SiteTextsLoader` har yuklanishda fetch qiladi va Zustand store'ga saqlaydi
+- `useTranslation()` hook DB override'larini `deepMerge` orqali standart tarjimalar ustiga qo'yadi
+
 ## Arxitektura
 
 **Monorepo tuzilmasi:**
