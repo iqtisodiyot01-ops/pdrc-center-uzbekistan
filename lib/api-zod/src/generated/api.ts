@@ -563,10 +563,14 @@ export const createBookingBodyNameMin = 2;
 export const createBookingBodyPhoneMin = 9;
 
 export const CreateBookingBody = zod.object({
+  type: zod.string().optional(),
   name: zod.string().min(createBookingBodyNameMin),
   phone: zod.string().min(createBookingBodyPhoneMin),
   email: zod.string().nullish(),
+  age: zod.string().nullish(),
+  address: zod.string().nullish(),
   serviceId: zod.number().nullish(),
+  courseName: zod.string().nullish(),
   message: zod.string().nullish(),
 });
 

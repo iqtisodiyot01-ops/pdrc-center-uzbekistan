@@ -1,13 +1,28 @@
+import { useState } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { useGetServices, getGetServicesQueryKey } from "@workspace/api-client-react";
 import { useAppStore } from "@/store/use-store";
-import { Loader2, Zap, ChevronRight } from "lucide-react";
+import { Loader2, Zap, ChevronRight, Phone } from "lucide-react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { ServiceBookingModal } from "@/components/ServiceBookingModal";
+
+const MANAGER_PHONE = "+998905783272";
+
+interface Service {
+  id: number;
+  nameUz: string;
+  nameEn: string;
+  nameRu: string;
+  category?: string | null;
+  price?: number | null;
+  imageUrl?: string | null;
+}
 
 export default function Services() {
   const { t, loc } = useTranslation();
-  const { token } = useAppStore();
+  const { lang, token } = useAppStore();
+  const [bookingModal, setBookingModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const { data: services, isLoading } = useGetServices({
     query: { enabled: !!token, queryKey: getGetServicesQueryKey() },
@@ -21,6 +36,13 @@ export default function Services() {
       </div>
     );
   }
+
+  const handleBook = (svc: Service) => {
+    setSelectedService(svc);
+    setBookingModal(true);
+  };
+
+  const managerLabel = lang === "uz" ? "Menejerga bog'lanish" : lang === "ru" ? "Связаться с менеджером" : "Contact manager";
 
   return (
     <div className="w-full pb-24 bg-gray-50">
@@ -62,17 +84,29 @@ export default function Services() {
                   {svc.category || t.services.category}
                 </div>
                 <h3 className="text-xl font-heading font-bold text-gray-900 mb-3 leading-snug">{loc(svc, "name")}</h3>
-                <p className="text-gray-600 text-sm mb-8 flex-1 leading-loose">
+                <p className="text-gray-600 text-sm mb-6 flex-1 leading-loose">
                   {loc(svc, "description")}
                 </p>
 
-                <div className="flex items-center justify-between mt-auto pt-5 border-t border-gray-100">
-                  <div className="font-heading font-extrabold text-lg text-[#0f3460]">
-                    {svc.price ? `${svc.price.toLocaleString()} UZS` : t.services.custom_price}
+                <div className="flex flex-col gap-3 mt-auto pt-5 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="font-heading font-extrabold text-lg text-[#0f3460]">
+                      {svc.price ? `${svc.price.toLocaleString()} UZS` : t.services.custom_price}
+                    </div>
+                    <button
+                      onClick={() => handleBook(svc as Service)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors"
+                    >
+                      {t.common.book_now} <ChevronRight size={14} />
+                    </button>
                   </div>
-                  <Link href="/contact" className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors">
-                    {t.common.book_now} <ChevronRight size={14} />
-                  </Link>
+                  <a
+                    href={`tel:${MANAGER_PHONE}`}
+                    className="flex items-center justify-center gap-2 py-2.5 bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-semibold hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
+                  >
+                    <Phone size={14} />
+                    {managerLabel}
+                  </a>
                 </div>
               </div>
             </motion.div>
@@ -84,6 +118,12 @@ export default function Services() {
           )}
         </div>
       </div>
+
+      <ServiceBookingModal
+        open={bookingModal}
+        onClose={() => setBookingModal(false)}
+        service={selectedService}
+      />
     </div>
   );
 }

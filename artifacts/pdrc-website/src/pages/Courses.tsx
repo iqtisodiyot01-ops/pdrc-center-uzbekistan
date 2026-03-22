@@ -1,13 +1,30 @@
+import { useState } from "react";
 import { useTranslation } from "@/lib/i18n";
 import { useGetCourses, getGetCoursesQueryKey } from "@workspace/api-client-react";
 import { useAppStore } from "@/store/use-store";
 import { Loader2, GraduationCap, Clock, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { CourseEnrollModal } from "@/components/CourseEnrollModal";
+
+interface Course {
+  id: number;
+  nameUz: string;
+  nameEn: string;
+  nameRu: string;
+  level: string;
+  durationDays: number;
+  price: number;
+  imageUrl?: string | null;
+  descriptionUz?: string;
+  descriptionEn?: string;
+  descriptionRu?: string;
+}
 
 export default function Courses() {
   const { t, loc } = useTranslation();
   const { token } = useAppStore();
+  const [enrollModal, setEnrollModal] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   const { data: courses, isLoading } = useGetCourses({
     query: { enabled: !!token, queryKey: getGetCoursesQueryKey() },
@@ -21,6 +38,11 @@ export default function Courses() {
       </div>
     );
   }
+
+  const handleEnroll = (course: Course) => {
+    setSelectedCourse(course);
+    setEnrollModal(true);
+  };
 
   return (
     <div className="w-full pb-24 bg-gray-50">
@@ -72,12 +94,12 @@ export default function Courses() {
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-1">{t.common.price}</p>
                   <p className="font-heading font-extrabold text-2xl text-[#0f3460]">{course.price.toLocaleString()} UZS</p>
                 </div>
-                <Link
-                  href="/contact"
+                <button
+                  onClick={() => handleEnroll(course as Course)}
                   className="w-full sm:w-auto px-8 py-3.5 bg-blue-700 text-white font-display font-bold uppercase tracking-widest rounded-xl hover:bg-blue-800 transition-colors text-center flex items-center justify-center gap-2"
                 >
                   {t.courses.enroll} <ChevronRight size={16} />
-                </Link>
+                </button>
               </div>
             </div>
           </motion.div>
@@ -88,6 +110,13 @@ export default function Courses() {
           </div>
         )}
       </div>
+
+      <CourseEnrollModal
+        open={enrollModal}
+        onClose={() => setEnrollModal(false)}
+        courses={(courses as Course[]) || []}
+        preselectedCourse={selectedCourse}
+      />
     </div>
   );
 }

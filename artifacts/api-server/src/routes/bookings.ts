@@ -4,6 +4,7 @@ import { bookingsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdminPermission } from "../middlewares/auth";
 import { CreateBookingBody, UpdateBookingStatusBody } from "@workspace/api-zod";
+import { sendBookingNotification } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,17 @@ router.post("/bookings", async (req, res) => {
     return;
   }
   const [booking] = await db.insert(bookingsTable).values(parsed.data).returning();
+  sendBookingNotification({
+    bookingId: booking.id,
+    type: booking.type || "booking",
+    name: booking.name,
+    phone: booking.phone,
+    age: booking.age,
+    address: booking.address,
+    courseName: booking.courseName,
+    serviceId: booking.serviceId,
+    message: booking.message,
+  }).catch(console.error);
   res.status(201).json(booking);
 });
 

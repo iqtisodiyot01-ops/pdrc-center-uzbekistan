@@ -63,6 +63,57 @@ export async function sendOrderNotification(order: OrderNotification): Promise<v
   }
 }
 
+export interface BookingNotification {
+  bookingId: number;
+  type: string;
+  name: string;
+  phone: string;
+  age?: string | null;
+  address?: string | null;
+  courseName?: string | null;
+  serviceId?: number | null;
+  message?: string | null;
+}
+
+export async function sendBookingNotification(booking: BookingNotification): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn("Telegram credentials not configured, skipping notification");
+    return;
+  }
+
+  const isCourse = booking.type === "course_enrollment";
+  const header = isCourse ? `🎓 *Yangi kurs ro'yxatdan o'tish \\#${booking.bookingId}*` : `📅 *Yangi bron \\#${booking.bookingId}*`;
+
+  const lines = [
+    header,
+    ``,
+    `👤 *Ism:* ${escapeMarkdown(booking.name)}`,
+    `📞 *Telefon:* ${escapeMarkdown(booking.phone)}`,
+  ];
+
+  if (booking.age) lines.push(`🎂 *Yoshi:* ${escapeMarkdown(booking.age)}`);
+  if (booking.address) lines.push(`📍 *Manzil:* ${escapeMarkdown(booking.address)}`);
+  if (booking.courseName) lines.push(`📚 *Kurs:* ${escapeMarkdown(booking.courseName)}`);
+  if (booking.message) lines.push(``, `💬 *Xabar:* ${escapeMarkdown(booking.message)}`);
+
+  const text = lines.join("\n");
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: "MarkdownV2" }),
+    });
+    if (!resp.ok) {
+      const errorBody = await resp.text();
+      console.error("Telegram API error:", resp.status, errorBody);
+    }
+  } catch (err) {
+    console.error("Failed to send Telegram booking notification:", err);
+  }
+}
+
 function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 }
