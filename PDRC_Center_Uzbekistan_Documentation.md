@@ -1334,17 +1334,19 @@ Content-Type: "application/json"
 
 ```
 ID: 2
-Email:    admin@pdrcenteruzbekistan.com
-Parol:    admin123
+Email:    [SUPERADMIN EMAIL - DB'dan ko'ring]
+Parol:    [MAXFIY - server muhitida o'rnating]
 Rol:      superadmin
 Huquqlar: hammasi (superadmin)
 
 ID: 3
 Ism:      Omonjon
-Email:    Anvarov1170@gmail.com
+Email:    [ADMIN EMAIL - DB'dan ko'ring]
 Rol:      admin
 Huquqlar: DB'dagi permissions maydoniga qarab
 ```
+
+> **MUHIM XAVFSIZLIK ESLATMASI:** Admin kiritish ma'lumotlarini hech qachon ommaviy repozitoriyda saqlamang. Parollarni `.env` fayli yoki muhit o'zgaruvchilari orqali boshqaring.
 
 ---
 
