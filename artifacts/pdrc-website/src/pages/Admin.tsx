@@ -45,6 +45,12 @@ export default function Admin() {
     refetchInterval: 30000,
   });
 
+  const { data: adminCategories = [] } = useQuery<{ id: number; nameUz: string; nameEn: string; nameRu: string }[]>({
+    queryKey: ["categories"],
+    queryFn: () => api.get("/categories"),
+    enabled: !!user && (user.role === "admin" || user.role === "superadmin"),
+  });
+
   const { data: statsData } = useQuery<{ pendingOrders: number }>({
     queryKey: ["admin-stats-mini"],
     queryFn: () => api.get<{ pendingOrders: number }>("/admin/stats"),
@@ -88,23 +94,34 @@ export default function Admin() {
             title={lang === "uz" ? "Mahsulotlar" : "Products"}
             apiPath="products"
             queryKey="products"
-            defaultValues={{ inStock: true }}
+            defaultValues={{ inStock: true, stock: 0 }}
             fields={[
               { key: "nameUz", label: "Nomi (UZ)", type: "text", required: true },
               { key: "nameEn", label: "Name (EN)", type: "text", required: true },
-              { key: "nameRu", label: "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 (RU)", type: "text", required: true },
+              { key: "nameRu", label: "Название (RU)", type: "text", required: true },
               { key: "descriptionUz", label: "Tavsif (UZ)", type: "textarea", required: true },
               { key: "descriptionEn", label: "Description (EN)", type: "textarea", required: true },
-              { key: "descriptionRu", label: "\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 (RU)", type: "textarea", required: true },
+              { key: "descriptionRu", label: "Описание (RU)", type: "textarea", required: true },
               { key: "price", label: lang === "uz" ? "Narxi (UZS)" : "Price (UZS)", type: "number", required: true },
-              { key: "category", label: lang === "uz" ? "Kategoriya" : "Category", type: "text", required: true, placeholder: lang === "uz" ? "Masalan: Kanchallar" : "e.g. Hooks" },
+              { key: "discountPrice", label: lang === "uz" ? "Chegirma narxi (UZS)" : "Discount Price (UZS)", type: "number" },
+              { key: "stock", label: lang === "uz" ? "Ombordagi miqdor" : "Stock Quantity", type: "number" },
+              {
+                key: "category",
+                label: lang === "uz" ? "Kategoriya" : "Category",
+                type: adminCategories.length > 0 ? "select" : "text",
+                required: true,
+                options: adminCategories.map((c) => c.nameUz),
+                placeholder: lang === "uz" ? "Kategoriyani tanlang" : "Select category",
+              },
               { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
               { key: "inStock", label: lang === "uz" ? "Mavjud" : "In Stock", type: "checkbox" },
             ]}
             displayFn={(item, l) => ({
               title: String(l === "uz" ? item.nameUz : l === "ru" ? item.nameRu : item.nameEn),
               subtitle: String(l === "uz" ? item.nameEn : item.nameUz) + " / " + String(item.nameRu),
-              meta: `${Number(item.price).toLocaleString()} UZS`,
+              meta: item.discountPrice
+                ? `${Number(item.discountPrice).toLocaleString()} UZS (${Number(item.price).toLocaleString()})`
+                : `${Number(item.price).toLocaleString()} UZS`,
               badge: String(item.category),
               image: item.imageUrl ? String(item.imageUrl) : undefined,
             })}

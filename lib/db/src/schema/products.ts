@@ -11,6 +11,8 @@ export const productsTable = pgTable("products", {
   descriptionEn: text("description_en").notNull(),
   descriptionRu: text("description_ru").notNull(),
   price: integer("price").notNull(),
+  discountPrice: integer("discount_price"),
+  stock: integer("stock").notNull().default(0),
   imageUrl: text("image_url"),
   category: text("category").notNull().default("tools"),
   inStock: boolean("in_stock").notNull().default(true),

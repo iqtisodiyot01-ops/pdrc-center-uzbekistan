@@ -69,13 +69,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const isShopPage = location.startsWith("/shop");
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 pt-[128px] md:pt-[152px]">
       <Navbar />
       <main className="flex-1">
         {children}
       </main>
-      <Footer />
+      {!isShopPage && <Footer />}
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </div>
   );

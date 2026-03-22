@@ -16,7 +16,7 @@ Paintless Dent Repair markazining to'liq veb-sayti. React + TypeScript, pnpm mon
 ## Saytda mavjud bo'limlar
 
 - **Asosiy sahifa** — Hero, xizmatlar, kurslar, galereya, sharhlar
-- **Do'kon (Shop)** — Mahsulotlar katalogi, savatcha (cart), buyurtmalar, wishlist
+- **Do'kon (Shop)** — Uzum uslubidagi to'liq marketplace: chap sidebar kategoriyalar, grid/list ko'rinish, chegirma badge-lari, stock ko'rsatgichi, mahsulot detail sahifasi (`/shop/:id`) — rasm zoom, o'xshash mahsulotlar, footer yo'q
 - **Kurslar** — PDR kurslari ro'yxati va batafsil ma'lumot
 - **Xizmatlar** — PDR xizmatlari
 - **Galereya** — Ishlar galereya
