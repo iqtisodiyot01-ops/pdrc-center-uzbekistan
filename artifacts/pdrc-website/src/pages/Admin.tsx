@@ -13,6 +13,7 @@ import { FinancesSection } from "@/components/admin/FinancesSection";
 import { AdminsSection } from "@/components/admin/AdminsSection";
 import { SettingsSection } from "@/components/admin/SettingsSection";
 import { ContentSection } from "@/components/admin/ContentSection";
+import { CategoriesSection } from "@/components/admin/CategoriesSection";
 
 function PermissionDenied() {
   const { lang } = useAppStore();
@@ -79,6 +80,8 @@ export default function Admin() {
         return <MessagesSection />;
       case "bookings":
         return <BookingsSection />;
+      case "categories":
+        return <CategoriesSection />;
       case "products":
         return (
           <ContentSection
@@ -94,8 +97,8 @@ export default function Admin() {
               { key: "descriptionEn", label: "Description (EN)", type: "textarea", required: true },
               { key: "descriptionRu", label: "\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 (RU)", type: "textarea", required: true },
               { key: "price", label: lang === "uz" ? "Narxi (UZS)" : "Price (UZS)", type: "number", required: true },
-              { key: "category", label: lang === "uz" ? "Kategoriya" : "Category", type: "text", required: true },
-              { key: "imageUrl", label: lang === "uz" ? "Rasm URL" : "Image URL", type: "text" },
+              { key: "category", label: lang === "uz" ? "Kategoriya" : "Category", type: "text", required: true, placeholder: lang === "uz" ? "Masalan: Kanchallar" : "e.g. Hooks" },
+              { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
               { key: "inStock", label: lang === "uz" ? "Mavjud" : "In Stock", type: "checkbox" },
             ]}
             displayFn={(item, l) => ({
@@ -122,7 +125,7 @@ export default function Admin() {
               { key: "descriptionRu", label: "\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 (RU)", type: "textarea", required: true },
               { key: "price", label: lang === "uz" ? "Narxi" : "Price", type: "number" },
               { key: "category", label: lang === "uz" ? "Kategoriya" : "Category", type: "text" },
-              { key: "imageUrl", label: lang === "uz" ? "Rasm URL" : "Image URL", type: "text" },
+              { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
             ]}
             displayFn={(item, l) => ({
               title: String(l === "uz" ? item.nameUz : l === "ru" ? item.nameRu : item.nameEn),
@@ -148,7 +151,7 @@ export default function Admin() {
               { key: "price", label: lang === "uz" ? "Narxi" : "Price", type: "number", required: true },
               { key: "durationDays", label: lang === "uz" ? "Davomiyligi (kun)" : "Duration (days)", type: "number", required: true },
               { key: "level", label: lang === "uz" ? "Daraja" : "Level", type: "select", options: ["beginner", "intermediate", "advanced"] },
-              { key: "imageUrl", label: lang === "uz" ? "Rasm URL" : "Image URL", type: "text" },
+              { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
             ]}
             displayFn={(item, l) => ({
               title: String(l === "uz" ? item.nameUz : l === "ru" ? item.nameRu : item.nameEn),
@@ -172,7 +175,7 @@ export default function Admin() {
               { key: "contentUz", label: "Matn (UZ)", type: "textarea", required: true },
               { key: "contentEn", label: "Content (EN)", type: "textarea", required: true },
               { key: "contentRu", label: "\u0421\u043e\u0434\u0435\u0440\u0436\u0430\u043d\u0438\u0435 (RU)", type: "textarea", required: true },
-              { key: "imageUrl", label: lang === "uz" ? "Rasm URL" : "Image URL", type: "text" },
+              { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
             ]}
             displayFn={(item, l) => ({
               title: String(l === "uz" ? item.titleUz : l === "ru" ? item.titleRu : item.titleEn),
@@ -191,8 +194,8 @@ export default function Admin() {
               { key: "titleUz", label: "Sarlavha (UZ)", type: "text", required: true },
               { key: "titleEn", label: "Title (EN)", type: "text", required: true },
               { key: "titleRu", label: "\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a (RU)", type: "text", required: true },
-              { key: "beforeImage", label: lang === "uz" ? "Oldin rasm URL" : "Before Image URL", type: "text", required: true },
-              { key: "afterImage", label: lang === "uz" ? "Keyin rasm URL" : "After Image URL", type: "text", required: true },
+              { key: "beforeImage", label: lang === "uz" ? "Oldin rasm" : "Before Image", type: "image" },
+              { key: "afterImage", label: lang === "uz" ? "Keyin rasm" : "After Image", type: "image" },
               { key: "category", label: lang === "uz" ? "Kategoriya" : "Category", type: "text" },
               { key: "carBrand", label: lang === "uz" ? "Mashina markasi" : "Car Brand", type: "text" },
             ]}
@@ -216,7 +219,7 @@ export default function Admin() {
               { key: "textEn", label: "Review (EN)", type: "textarea", required: true },
               { key: "textRu", label: "\u041e\u0442\u0437\u044b\u0432 (RU)", type: "textarea", required: true },
               { key: "carBrand", label: lang === "uz" ? "Mashina markasi" : "Car Brand", type: "text" },
-              { key: "avatarUrl", label: "Avatar URL", type: "text" },
+              { key: "avatarUrl", label: lang === "uz" ? "Avatar rasm" : "Avatar Image", type: "image" },
             ]}
             displayFn={(item, l) => ({
               title: `${item.author} ${"★".repeat(Number(item.rating) || 5)}`,

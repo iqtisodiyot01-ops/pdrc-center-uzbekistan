@@ -13,3 +13,4 @@ export * from "./articles";
 export * from "./advertisements";
 export * from "./finances";
 export * from "./contactMessages";
+export * from "./categories";

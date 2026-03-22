@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAppStore } from "@/store/use-store";
@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import {
   User, ShoppingBag, Heart, ShoppingCart, LogOut,
   Package, ArrowUpDown, Trash2, ChevronRight, ChevronDown,
-  Clock, CheckCircle2, Box, Truck, MapPin,
+  Clock, CheckCircle2, Box, Truck, MapPin, MessageCircle, Send,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -22,6 +22,15 @@ interface OrderItem {
 interface Order {
   id: number; total: number; status: string; paymentMethod: string;
   deliveryAddress: string; createdAt: string; items: OrderItem[] | unknown;
+}
+
+interface Message {
+  id: number;
+  subject: string | null;
+  message: string;
+  reply: string | null;
+  isRead: boolean;
+  createdAt: string;
 }
 
 type SortKey = "price" | "name" | "date";
@@ -82,7 +91,10 @@ export default function Profile() {
   const qc = useQueryClient();
   const [wishSort, setWishSort] = useState<SortKey>("date");
   const [cartSort, setCartSort] = useState<SortKey>("name");
-  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "wishlist" | "cart">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orders" | "wishlist" | "cart" | "messages">("overview");
+  const [newMessage, setNewMessage] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
   const { data: cartRows = [] } = useQuery<CartRow[]>({
@@ -100,6 +112,29 @@ export default function Profile() {
     queryFn: () => api.get<Order[]>("/orders"),
     enabled: !!token,
   });
+
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ["my-messages"],
+    queryFn: () => api.get<Message[]>("/my-messages"),
+    enabled: !!token,
+    refetchInterval: activeTab === "messages" ? 15000 : false,
+  });
+
+  const sendMessage = useMutation({
+    mutationFn: (data: { subject: string; message: string }) =>
+      api.post("/my-messages", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-messages"] });
+      setNewMessage("");
+      setNewSubject("");
+    },
+  });
+
+  useEffect(() => {
+    if (activeTab === "messages") {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, activeTab]);
 
   const removeFromWishlist = useMutation({
     mutationFn: (productId: number) => api.delete(`/wishlist/${productId}`),
@@ -139,10 +174,12 @@ export default function Profile() {
       orders: "Buyurtmalar",
       wishlist: "Saqlangan",
       cart: "Savat",
+      messages: "Xabarlar",
       logout: "Chiqish",
       noOrders: "Buyurtmalar yo'q",
       noWishlist: "Saqlangan mahsulotlar yo'q",
       noCart: "Savat bo'sh",
+      noMessages: "Xabarlar yo'q",
       sort: "Saralash",
       byPrice: "Narx bo'yicha",
       byName: "Nomi bo'yicha",
@@ -153,36 +190,50 @@ export default function Profile() {
       delivery: "Yetkazib berish",
       payment: "To'lov",
       orderDetails: "Buyurtma tafsilotlari",
+      subject: "Mavzu",
+      messagePlaceholder: "Xabaringizni yozing...",
+      send: "Yuborish",
+      you: "Siz",
+      admin: "Admin",
     },
     ru: {
-      profile: "\u041f\u0440\u043e\u0444\u0438\u043b\u044c",
-      orders: "\u0417\u0430\u043a\u0430\u0437\u044b",
-      wishlist: "\u0421\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435",
-      cart: "\u041a\u043e\u0440\u0437\u0438\u043d\u0430",
-      logout: "\u0412\u044b\u0439\u0442\u0438",
-      noOrders: "\u0417\u0430\u043a\u0430\u0437\u043e\u0432 \u043d\u0435\u0442",
-      noWishlist: "\u041d\u0435\u0442 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0445 \u0442\u043e\u0432\u0430\u0440\u043e\u0432",
-      noCart: "\u041a\u043e\u0440\u0437\u0438\u043d\u0430 \u043f\u0443\u0441\u0442\u0430",
-      sort: "\u0421\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u043a\u0430",
-      byPrice: "\u041f\u043e \u0446\u0435\u043d\u0435",
-      byName: "\u041f\u043e \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044e",
-      byDate: "\u041f\u043e \u0434\u0430\u0442\u0435",
-      total: "\u0418\u0442\u043e\u0433\u043e",
-      som: "\u0441\u0443\u043c",
-      items: "\u0442\u043e\u0432\u0430\u0440\u043e\u0432",
-      delivery: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430",
-      payment: "\u041e\u043f\u043b\u0430\u0442\u0430",
-      orderDetails: "\u0414\u0435\u0442\u0430\u043b\u0438 \u0437\u0430\u043a\u0430\u0437\u0430",
+      profile: "Профиль",
+      orders: "Заказы",
+      wishlist: "Сохранённые",
+      cart: "Корзина",
+      messages: "Сообщения",
+      logout: "Выйти",
+      noOrders: "Заказов нет",
+      noWishlist: "Нет сохранённых товаров",
+      noCart: "Корзина пуста",
+      noMessages: "Нет сообщений",
+      sort: "Сортировка",
+      byPrice: "По цене",
+      byName: "По названию",
+      byDate: "По дате",
+      total: "Итого",
+      som: "сум",
+      items: "товаров",
+      delivery: "Доставка",
+      payment: "Оплата",
+      orderDetails: "Детали заказа",
+      subject: "Тема",
+      messagePlaceholder: "Напишите сообщение...",
+      send: "Отправить",
+      you: "Вы",
+      admin: "Админ",
     },
     en: {
       profile: "Profile",
       orders: "Orders",
       wishlist: "Saved",
       cart: "Cart",
+      messages: "Messages",
       logout: "Logout",
       noOrders: "No orders yet",
       noWishlist: "No saved products",
       noCart: "Cart is empty",
+      noMessages: "No messages yet",
       sort: "Sort",
       byPrice: "By price",
       byName: "By name",
@@ -193,12 +244,18 @@ export default function Profile() {
       delivery: "Delivery",
       payment: "Payment",
       orderDetails: "Order details",
+      subject: "Subject",
+      messagePlaceholder: "Write your message...",
+      send: "Send",
+      you: "You",
+      admin: "Admin",
     },
   }[lang] ?? {
-    profile: "Profile", orders: "Orders", wishlist: "Saved", cart: "Cart", logout: "Logout",
-    noOrders: "No orders", noWishlist: "No saved", noCart: "Empty", sort: "Sort",
-    byPrice: "By price", byName: "By name", byDate: "By date", total: "Total", som: "UZS",
+    profile: "Profile", orders: "Orders", wishlist: "Saved", cart: "Cart", messages: "Messages", logout: "Logout",
+    noOrders: "No orders", noWishlist: "No saved", noCart: "Empty", noMessages: "No messages",
+    sort: "Sort", byPrice: "By price", byName: "By name", byDate: "By date", total: "Total", som: "UZS",
     items: "items", delivery: "Delivery", payment: "Payment", orderDetails: "Order details",
+    subject: "Subject", messagePlaceholder: "Write...", send: "Send", you: "You", admin: "Admin",
   };
 
   const statusColor = (s: string) => ({
@@ -232,6 +289,7 @@ export default function Profile() {
     { key: "orders", label: t.orders, icon: ShoppingBag, badge: orders.length },
     { key: "wishlist", label: t.wishlist, icon: Heart, badge: wishRows.length },
     { key: "cart", label: t.cart, icon: ShoppingCart, badge: cartRows.length },
+    { key: "messages", label: t.messages, icon: MessageCircle, badge: messages.length },
   ] as const;
 
   return (
@@ -514,6 +572,82 @@ export default function Profile() {
                   </div>
                 </>
               )}
+            </div>
+          )}
+          {activeTab === "messages" && (
+            <div className="flex flex-col gap-4">
+              <div className="flex-1 max-h-[500px] overflow-y-auto space-y-4 pr-1">
+                {messages.length === 0 ? (
+                  <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
+                    <MessageCircle size={40} className="text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">{t.noMessages}</p>
+                  </div>
+                ) : (
+                  [...messages].reverse().map((msg) => (
+                    <div key={msg.id} className="space-y-2">
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%] rounded-2xl rounded-br-none px-4 py-2.5 shadow-sm bg-[#0f3460] text-white">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold uppercase text-blue-200">{t.you}</span>
+                            {msg.subject && (
+                              <span className="text-[10px] text-blue-200">· {msg.subject}</span>
+                            )}
+                          </div>
+                          <p className="text-sm leading-snug text-white">{msg.message}</p>
+                          <p className="text-[10px] mt-1 text-right text-blue-200">
+                            {new Date(msg.createdAt).toLocaleString(lang === "ru" ? "ru-RU" : lang === "en" ? "en-US" : "uz-UZ", { dateStyle: "short", timeStyle: "short" })}
+                          </p>
+                        </div>
+                      </div>
+                      {msg.reply && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[80%] rounded-2xl rounded-bl-none px-4 py-2.5 shadow-sm bg-white border border-gray-200">
+                            <span className="text-[10px] font-bold uppercase text-blue-600 block mb-1">{t.admin}</span>
+                            <p className="text-sm leading-snug text-gray-800">{msg.reply}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+                <input
+                  type="text"
+                  value={newSubject}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  placeholder={t.subject}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <div className="flex gap-2">
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={t.messagePlaceholder}
+                    rows={3}
+                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && e.ctrlKey && newMessage.trim()) {
+                        sendMessage.mutate({ subject: newSubject, message: newMessage });
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (newMessage.trim()) {
+                        sendMessage.mutate({ subject: newSubject || "—", message: newMessage });
+                      }
+                    }}
+                    disabled={!newMessage.trim() || sendMessage.isPending}
+                    className="px-4 py-2 bg-[#0f3460] text-white rounded-lg hover:bg-blue-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 text-sm font-semibold shrink-0"
+                  >
+                    <Send size={14} />
+                    {t.send}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

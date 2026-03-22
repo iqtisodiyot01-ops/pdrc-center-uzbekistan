@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Wrench, Award, ChevronRight, CheckCircle2, Phone, Send } from "lucide-react";
 import { useGetServices, getGetServicesQueryKey } from "@workspace/api-client-react";
 import { useAppStore } from "@/store/use-store";
+import { FloatingAds } from "@/components/FloatingAds";
 
 export default function Home() {
   const { t, loc } = useTranslation();
@@ -221,6 +222,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <FloatingAds />
     </div>
   );
 }

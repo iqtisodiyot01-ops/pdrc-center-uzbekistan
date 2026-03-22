@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, contactMessagesTable } from "@workspace/db";
+import { db, contactMessagesTable, usersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { requireAdminPermission } from "../middlewares/auth";
+import { requireAdminPermission, requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -16,6 +16,33 @@ router.post("/contact-messages", async (req, res) => {
     .values({ name, email, phone, subject, message })
     .returning();
   res.status(201).json(msg);
+});
+
+router.post("/my-messages", requireAuth, async (req, res) => {
+  const { subject, message } = req.body;
+  const userId = req.user!.userId;
+  if (!message) {
+    res.status(400).json({ error: "message required" });
+    return;
+  }
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email, phone: usersTable.phone })
+    .from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+  const [msg] = await db
+    .insert(contactMessagesTable)
+    .values({ userId, name: user.name, email: user.email, phone: user.phone, subject, message })
+    .returning();
+  res.status(201).json(msg);
+});
+
+router.get("/my-messages", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const messages = await db
+    .select()
+    .from(contactMessagesTable)
+    .where(eq(contactMessagesTable.userId, userId))
+    .orderBy(desc(contactMessagesTable.createdAt));
+  res.json(messages);
 });
 
 router.get("/admin/messages", requireAdminPermission("messages"), async (_req, res) => {

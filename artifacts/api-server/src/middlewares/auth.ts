@@ -76,43 +76,52 @@ async function loadAndValidateAdmin(req: Request, res: Response): Promise<boolea
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  requireAuth(req, res, async () => {
-    const valid = await loadAndValidateAdmin(req, res);
-    if (valid) next();
+  requireAuth(req, res, () => {
+    loadAndValidateAdmin(req, res)
+      .then((valid) => { if (valid) next(); })
+      .catch(next);
   });
 }
 
 export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  requireAuth(req, res, async () => {
-    const valid = await loadAndValidateAdmin(req, res);
-    if (!valid) return;
-    if (req.dbUser!.role !== "superadmin") {
-      res.status(403).json({ error: "Forbidden", message: "Super-admin access required" });
-      return;
-    }
-    next();
+  requireAuth(req, res, () => {
+    loadAndValidateAdmin(req, res)
+      .then((valid) => {
+        if (!valid) return;
+        if (req.dbUser!.role !== "superadmin") {
+          res.status(403).json({ error: "Forbidden", message: "Super-admin access required" });
+          return;
+        }
+        next();
+      })
+      .catch(next);
   });
 }
 
 export function requireAdminPermission(permission: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    requireAuth(req, res, async () => {
-      const valid = await loadAndValidateAdmin(req, res);
-      if (!valid) return;
-
-      if (req.dbUser!.role === "superadmin") {
-        next();
-        return;
-      }
-
-      const perms = req.dbUser!.permissions;
-      if (!perms || !perms[permission]) {
-        res.status(403).json({ error: "Forbidden", message: `Permission '${permission}' required` });
-        return;
-      }
-      next();
+    requireAuth(req, res, () => {
+      loadAndValidateAdmin(req, res)
+        .then((valid) => {
+          if (!valid) return;
+          if (req.dbUser!.role === "superadmin") {
+            next();
+            return;
+          }
+          const perms = req.dbUser!.permissions;
+          if (!perms || !perms[permission]) {
+            res.status(403).json({ error: "Forbidden", message: `Permission '${permission}' required` });
+            return;
+          }
+          next();
+        })
+        .catch(next);
     });
   };
+}
+
+export function requireUserAuth(req: Request, res: Response, next: NextFunction) {
+  requireAuth(req, res, next);
 }
 
 export function signToken(payload: AuthPayload): string {

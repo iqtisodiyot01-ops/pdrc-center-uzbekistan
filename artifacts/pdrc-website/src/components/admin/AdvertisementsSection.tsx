@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useAppStore } from "@/store/use-store";
 import { useToast } from "@/hooks/use-toast";
 import { Megaphone, Plus, Trash2, Edit, Loader2, Eye, EyeOff } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 interface Advertisement {
   id: number; titleUz: string; titleEn: string; titleRu: string;
@@ -104,10 +105,15 @@ export function AdvertisementsSection() {
             <div><label className="text-xs font-bold text-gray-500 uppercase">Title (EN)</label><input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} className={inputClass} required /></div>
             <div><label className="text-xs font-bold text-gray-500 uppercase">Title (RU)</label><input value={form.titleRu} onChange={(e) => setForm({ ...form, titleRu: e.target.value })} className={inputClass} required /></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><label className="text-xs font-bold text-gray-500 uppercase">{lang === "uz" ? "Rasm URL" : "Image URL"}</label><input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className={inputClass} placeholder="https://..." /></div>
-            <div><label className="text-xs font-bold text-gray-500 uppercase">{lang === "uz" ? "Havola" : "Link URL"}</label><input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} className={inputClass} placeholder="https://..." /></div>
-            <div><label className="text-xs font-bold text-gray-500 uppercase">{lang === "uz" ? "Tartib" : "Sort Order"}</label><input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} className={inputClass} /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{lang === "uz" ? "Rasm" : "Image"}</label>
+              <ImageUpload value={form.imageUrl} onChange={(url) => setForm({ ...form, imageUrl: url })} />
+            </div>
+            <div className="space-y-3">
+              <div><label className="text-xs font-bold text-gray-500 uppercase block mb-1">{lang === "uz" ? "Havola URL" : "Link URL"}</label><input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} className={inputClass} placeholder="https://..." /></div>
+              <div><label className="text-xs font-bold text-gray-500 uppercase block mb-1">{lang === "uz" ? "Tartib raqami" : "Sort Order"}</label><input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} className={inputClass} /></div>
+            </div>
           </div>
           <div className="flex gap-3">
             <button type="submit" disabled={createAd.isPending || updateAd.isPending} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">

@@ -8,68 +8,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-const CATALOG_CATEGORIES = [
-  {
-    key: "Tayyor to'plamlar",
-    icon: "🎁",
-    label: { uz: "Tayyor to'plamlar", en: "Ready kits", ru: "Готовые комплекты" },
-    desc: { uz: "Professional PDR to'plamlari", en: "Professional PDR kits", ru: "Профессиональные PDR наборы" },
-    color: "from-blue-500 to-blue-700",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
-    accent: "text-blue-700",
-  },
-  {
-    key: "Kanchallar",
-    icon: "🔧",
-    label: { uz: "Kanchallar", en: "Hooks & tools", ru: "Крючки и инструменты" },
-    desc: { uz: "PDR kanchallar to'plami", en: "PDR hooks collection", ru: "Коллекция PDR крючков" },
-    color: "from-slate-500 to-slate-700",
-    bg: "bg-slate-50",
-    border: "border-slate-200",
-    accent: "text-slate-700",
-  },
-  {
-    key: "Aksessuarlar",
-    icon: "🛠️",
-    label: { uz: "Aksessuarlar", en: "Accessories", ru: "Аксессуары" },
-    desc: { uz: "Qo'shimcha asbob-uskunalar", en: "Additional equipment", ru: "Дополнительное оборудование" },
-    color: "from-orange-500 to-orange-700",
-    bg: "bg-orange-50",
-    border: "border-orange-200",
-    accent: "text-orange-700",
-  },
-  {
-    key: "Lampalar",
-    icon: "💡",
-    label: { uz: "Lampalar", en: "Lamps", ru: "Лампы" },
-    desc: { uz: "LED va halogen lampalar", en: "LED and halogen lamps", ru: "LED и галогенные лампы" },
-    color: "from-yellow-400 to-yellow-600",
-    bg: "bg-yellow-50",
-    border: "border-yellow-200",
-    accent: "text-yellow-700",
-  },
-  {
-    key: "Yelim tizimi",
-    icon: "🔩",
-    label: { uz: "Yelim tizimi", en: "Glue system", ru: "Клеевая система" },
-    desc: { uz: "Yelim va applikatorlar", en: "Glue and applicators", ru: "Клей и аппликаторы" },
-    color: "from-purple-500 to-purple-700",
-    bg: "bg-purple-50",
-    border: "border-purple-200",
-    accent: "text-purple-700",
-  },
-  {
-    key: "Ijtimoiy shartnoma",
-    icon: "📋",
-    label: { uz: "Ijtimoiy shartnoma", en: "Social package", ru: "Социальный пакет" },
-    desc: { uz: "Kompleks xizmat to'plamlari", en: "Complete service packages", ru: "Комплексные пакеты услуг" },
-    color: "from-green-500 to-green-700",
-    bg: "bg-green-50",
-    border: "border-green-200",
-    accent: "text-green-700",
-  },
+const CAT_COLORS = [
+  { color: "from-blue-500 to-blue-700", bg: "bg-blue-50", border: "border-blue-200", accent: "text-blue-700" },
+  { color: "from-slate-500 to-slate-700", bg: "bg-slate-50", border: "border-slate-200", accent: "text-slate-700" },
+  { color: "from-orange-500 to-orange-700", bg: "bg-orange-50", border: "border-orange-200", accent: "text-orange-700" },
+  { color: "from-yellow-400 to-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", accent: "text-yellow-700" },
+  { color: "from-purple-500 to-purple-700", bg: "bg-purple-50", border: "border-purple-200", accent: "text-purple-700" },
+  { color: "from-green-500 to-green-700", bg: "bg-green-50", border: "border-green-200", accent: "text-green-700" },
+  { color: "from-rose-500 to-rose-700", bg: "bg-rose-50", border: "border-rose-200", accent: "text-rose-700" },
+  { color: "from-teal-500 to-teal-700", bg: "bg-teal-50", border: "border-teal-200", accent: "text-teal-700" },
 ];
+
+interface ApiCategory { id: number; nameUz: string; nameEn: string; nameRu: string; icon: string | null; sortOrder: number; }
+
 
 interface Product {
   id: number;
@@ -139,6 +90,11 @@ export default function Shop() {
     query: { queryKey: getGetProductsQueryKey(), enabled: !!token },
   });
 
+  const { data: apiCategories = [] } = useQuery<ApiCategory[]>({
+    queryKey: ["categories"],
+    queryFn: () => api.get<ApiCategory[]>("/categories"),
+  });
+
   const filteredProducts = activeCategory
     ? products.filter((p: Product) => p.category === activeCategory)
     : products;
@@ -152,7 +108,7 @@ export default function Shop() {
     }
   };
 
-  const activeCat = CATALOG_CATEGORIES.find((c) => c.key === activeCategory);
+  const activeCat = apiCategories.find((c) => c.nameUz === activeCategory || c.nameEn === activeCategory);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -174,7 +130,7 @@ export default function Shop() {
             <div className="mt-3 flex items-center gap-2">
               <span className="text-blue-300 text-sm">›</span>
               <span className="text-white font-semibold text-sm">
-                {activeCat?.label[lang] || activeCategory}
+                {activeCat ? (lang === "uz" ? activeCat.nameUz : lang === "ru" ? activeCat.nameRu : activeCat.nameEn) : activeCategory}
               </span>
               <button
                 onClick={() => setActiveCategory("")}
@@ -210,43 +166,43 @@ export default function Shop() {
 
         {/* 1-col on very small, 2-col on sm+, 3-col on lg — matching pdrc.ru КАТАЛОГ layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5">
-          {CATALOG_CATEGORIES.map((cat) => {
-            const isActive = activeCategory === cat.key;
+          {apiCategories.map((cat, i) => {
+            const colors = CAT_COLORS[i % CAT_COLORS.length];
+            const catKey = cat.nameUz;
+            const isActive = activeCategory === catKey;
+            const label = lang === "uz" ? cat.nameUz : lang === "ru" ? cat.nameRu : cat.nameEn;
             const productCount = products.filter(
-              (p: Product) => p.category === cat.key
+              (p: Product) => p.category === catKey
             ).length;
             return (
               <button
-                key={cat.key}
-                onClick={() => handleCategoryClick(cat.key)}
+                key={cat.id}
+                onClick={() => handleCategoryClick(catKey)}
                 className={`group text-left rounded-xl border overflow-hidden transition-all duration-200 bg-white active:scale-[0.98] ${
                   isActive
-                    ? `${cat.border} border-2 shadow-md`
+                    ? `${colors.border} border-2 shadow-md`
                     : "border-gray-200 hover:border-gray-300 hover:shadow-md shadow-sm"
                 }`}
               >
-                {/* Category name at TOP — like pdrc.ru */}
-                <div className={`px-3 pt-3 pb-2 border-b ${isActive ? cat.border : "border-gray-100"}`}>
+                {/* Category name at TOP */}
+                <div className={`px-3 pt-3 pb-2 border-b ${isActive ? colors.border : "border-gray-100"}`}>
                   <h3 className={`text-xs sm:text-sm font-bold uppercase leading-tight text-center ${
-                    isActive ? cat.accent : "text-gray-900"
+                    isActive ? colors.accent : "text-gray-900"
                   }`}>
-                    {cat.label[lang]}
+                    {label}
                   </h3>
                 </div>
 
                 {/* Image/icon area below */}
                 <div className="relative flex flex-col items-center justify-center p-4 sm:p-6 aspect-square">
-                  {/* Active indicator */}
                   {isActive && (
-                    <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-gradient-to-br ${cat.color}`} />
+                    <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-gradient-to-br ${colors.color}`} />
                   )}
-                  {/* Large emoji icon */}
                   <div className={`text-5xl sm:text-6xl transition-transform duration-200 group-hover:scale-110 ${
                     isActive ? "scale-110" : ""
                   }`}>
-                    {cat.icon}
+                    {cat.icon || "📦"}
                   </div>
-                  {/* Product count */}
                   {products.length > 0 && productCount > 0 && (
                     <span className="mt-2 text-xs text-gray-400 font-medium">
                       {productCount} {lang === "uz" ? "ta" : lang === "ru" ? "шт" : "items"}
@@ -267,7 +223,7 @@ export default function Shop() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">
             {activeCategory
-              ? activeCat?.label[lang] || activeCategory
+              ? (activeCat ? (lang === "uz" ? activeCat.nameUz : lang === "ru" ? activeCat.nameRu : activeCat.nameEn) : activeCategory)
               : lang === "uz"
               ? "Barcha mahsulotlar"
               : lang === "ru"

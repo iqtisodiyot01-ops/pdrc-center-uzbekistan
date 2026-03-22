@@ -4,12 +4,12 @@ import {
   LayoutDashboard, Package, MessageSquare, Wrench, ShoppingCart,
   GraduationCap, FileText, Users, Image, Star, Megaphone,
   DollarSign, Settings, ChevronLeft, ChevronRight, Menu, LogOut, Shield,
-  Calendar,
+  Calendar, Tag,
 } from "lucide-react";
 
 export type AdminSection =
   | "dashboard" | "orders" | "messages" | "bookings"
-  | "products" | "services" | "courses" | "articles"
+  | "products" | "categories" | "services" | "courses" | "articles"
   | "gallery" | "reviews" | "advertisements" | "finances"
   | "admins" | "settings";
 
@@ -19,6 +19,7 @@ const PERMISSION_MAP: Record<AdminSection, string> = {
   messages: "messages",
   bookings: "bookings",
   products: "products",
+  categories: "products",
   services: "services",
   courses: "courses",
   articles: "articles",
@@ -66,6 +67,7 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
       label: lang === "uz" ? "Kontent" : lang === "ru" ? "\u041a\u043e\u043d\u0442\u0435\u043d\u0442" : "Content",
       items: [
         { id: "products" as AdminSection, label: lang === "uz" ? "Mahsulotlar" : lang === "ru" ? "\u0422\u043e\u0432\u0430\u0440\u044b" : "Products", icon: ShoppingCart },
+        { id: "categories" as AdminSection, label: lang === "uz" ? "Kategoriyalar" : lang === "ru" ? "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u0438" : "Categories", icon: Tag },
         { id: "services" as AdminSection, label: lang === "uz" ? "Xizmatlar" : lang === "ru" ? "\u0423\u0441\u043b\u0443\u0433\u0438" : "Services", icon: Wrench },
         { id: "courses" as AdminSection, label: lang === "uz" ? "Kurslar" : lang === "ru" ? "\u041a\u0443\u0440\u0441\u044b" : "Courses", icon: GraduationCap },
         { id: "articles" as AdminSection, label: lang === "uz" ? "Maqolalar" : lang === "ru" ? "\u0421\u0442\u0430\u0442\u044c\u0438" : "Articles", icon: FileText },

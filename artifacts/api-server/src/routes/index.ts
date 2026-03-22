@@ -19,6 +19,8 @@ import articlesRouter from "./articles";
 import advertisementsRouter from "./advertisements";
 import financesRouter from "./finances";
 import contactMessagesRouter from "./contactMessages";
+import uploadRouter from "./upload";
+import categoriesRouter from "./categories";
 
 const router: IRouter = Router();
 
@@ -42,5 +44,7 @@ router.use(articlesRouter);
 router.use(advertisementsRouter);
 router.use(financesRouter);
 router.use(contactMessagesRouter);
+router.use(uploadRouter);
+router.use(categoriesRouter);
 
 export default router;

@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useAppStore } from "@/store/use-store";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Edit, Loader2, Save, X } from "lucide-react";
+import { ImageUpload } from "@/components/ImageUpload";
 
 interface ContentItem {
   id: number;
@@ -13,7 +14,7 @@ interface ContentItem {
 interface FieldDef {
   key: string;
   label: string;
-  type: "text" | "textarea" | "number" | "checkbox" | "select";
+  type: "text" | "textarea" | "number" | "checkbox" | "select" | "image";
   required?: boolean;
   options?: string[];
   placeholder?: string;
@@ -105,7 +106,9 @@ export function ContentSection({ title, apiPath, queryKey, fields, displayFn, de
             {fields.map((field) => (
               <div key={field.key} className={field.type === "textarea" ? "col-span-full" : ""}>
                 <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{field.label}</label>
-                {field.type === "textarea" ? (
+                {field.type === "image" ? (
+                  <ImageUpload value={String(form[field.key] || "")} onChange={(url) => setForm({ ...form, [field.key]: url })} />
+                ) : field.type === "textarea" ? (
                   <textarea value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     className={`${inputClass} resize-none h-24`} required={field.required} placeholder={field.placeholder} />
                 ) : field.type === "select" ? (
@@ -115,7 +118,7 @@ export function ContentSection({ title, apiPath, queryKey, fields, displayFn, de
                 ) : field.type === "checkbox" ? (
                   <input type="checkbox" checked={!!form[field.key]} onChange={(e) => setForm({ ...form, [field.key]: e.target.checked })} className="w-4 h-4 accent-blue-600" />
                 ) : (
-                  <input type={field.type} value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: field.type === "number" ? e.target.value : e.target.value })}
+                  <input type={field.type} value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     className={inputClass} required={field.required} placeholder={field.placeholder} />
                 )}
               </div>
