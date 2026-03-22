@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "s7BXu2yjG7vj0zhr3bklx"
+uri = "file://PDRC_Center_Uzbekistan_Documentation.md"
+type = "text"
+title = "PDRC Center Uzbekistan — To'liq Texnik Hujjat"
