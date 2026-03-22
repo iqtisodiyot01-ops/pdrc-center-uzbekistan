@@ -21,8 +21,8 @@ interface OrderItem { productId: number; productName: string; price: number; qua
 interface PaymentMethodsResponse {
   payme?: { enabled: true };
   click?: { enabled: true };
-  uzumbank?: { enabled: true; url: string };
-  paynet?: { enabled: true; url: string };
+  uzumbank?: { enabled: true };
+  paynet?: { enabled: true };
   visaCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
   uzcardCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
 }
@@ -135,9 +135,9 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   });
 
   const { data: paymentMethods } = useQuery<PaymentMethodsResponse>({
-    queryKey: ["payment-methods"],
-    queryFn: () => api.get<PaymentMethodsResponse>("/payment-methods"),
-    enabled: open,
+    queryKey: ["payment-methods-details"],
+    queryFn: () => api.get<PaymentMethodsResponse>("/payment-methods/details"),
+    enabled: open && !!token,
   });
 
   const updateQty = useMutation({
@@ -178,7 +178,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     placeOrder.mutate({ ...form, paymentMethod: "pending", items, total });
   };
 
-  const handleRedirectPayment = async (method: "payme" | "click", orderId: number) => {
+  const handleRedirectPayment = async (method: "payme" | "click" | "uzumbank" | "paynet", orderId: number) => {
     setRedirectLoading(method);
     try {
       await api.patch(`/orders/${orderId}/payment-method`, { paymentMethod: method });
@@ -186,18 +186,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
       window.location.href = data.url;
     } catch {
       toast({ title: lang === "uz" ? "To'lov tizimi sozlanmagan" : lang === "ru" ? "Платёжная система не настроена" : "Payment not configured", variant: "destructive" });
-      setRedirectLoading(null);
-    }
-  };
-
-  const handleUrlRedirect = async (method: "uzumbank" | "paynet", url: string, orderId: number) => {
-    setRedirectLoading(method);
-    try {
-      await api.patch(`/orders/${orderId}/payment-method`, { paymentMethod: method });
-      window.open(url, "_blank");
-    } catch {
-      window.open(url, "_blank");
-    } finally {
       setRedirectLoading(null);
     }
   };
@@ -211,8 +199,8 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   };
 
   const hasAnyMethod = paymentMethods && Object.keys(paymentMethods).length > 0;
-  const hasIntl = paymentMethods && (paymentMethods.payme || paymentMethods.click || paymentMethods.visaCard);
-  const hasLocal = paymentMethods && (paymentMethods.uzumbank || paymentMethods.paynet || paymentMethods.uzcardCard);
+  const hasIntl = paymentMethods && !!(paymentMethods.payme || paymentMethods.click || paymentMethods.visaCard);
+  const hasLocal = paymentMethods && !!(paymentMethods.uzumbank || paymentMethods.paynet || paymentMethods.uzcardCard);
 
   return (
     <AnimatePresence>
@@ -345,7 +333,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <div className="space-y-2">
                       {paymentMethods?.uzumbank && (
                         <button
-                          onClick={() => handleUrlRedirect("uzumbank", paymentMethods.uzumbank!.url, createdOrderId)}
+                          onClick={() => handleRedirectPayment("uzumbank", createdOrderId)}
                           disabled={redirectLoading !== null}
                           className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100/50 hover:border-orange-400 hover:from-orange-100 hover:to-orange-200/50 transition-all disabled:opacity-50 text-left"
                         >
@@ -360,7 +348,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 
                       {paymentMethods?.paynet && (
                         <button
-                          onClick={() => handleUrlRedirect("paynet", paymentMethods.paynet!.url, createdOrderId)}
+                          onClick={() => handleRedirectPayment("paynet", createdOrderId)}
                           disabled={redirectLoading !== null}
                           className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-teal-200 bg-gradient-to-r from-teal-50 to-teal-100/50 hover:border-teal-400 hover:from-teal-100 hover:to-teal-200/50 transition-all disabled:opacity-50 text-left"
                         >

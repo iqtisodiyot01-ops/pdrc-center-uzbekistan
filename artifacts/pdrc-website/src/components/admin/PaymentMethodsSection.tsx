@@ -162,25 +162,24 @@ export function PaymentMethodsSection() {
 
   const [initialized, setInitialized] = useState(false);
 
-  const { data: settings } = useQuery<Record<string, unknown>>({
-    queryKey: ["site-settings"],
-    queryFn: () => api.get<Record<string, unknown>>("/site-settings"),
+  const { data: pmConfig } = useQuery<Partial<PaymentMethodsConfig>>({
+    queryKey: ["admin-payment-methods-config"],
+    queryFn: () => api.get<Partial<PaymentMethodsConfig>>("/admin/payment-methods-config"),
   });
 
   useEffect(() => {
-    if (settings && !initialized) {
-      const pm = (settings.paymentMethods as Partial<PaymentMethodsConfig>) ?? {};
+    if (pmConfig && !initialized) {
       setCfg({
-        payme: { ...DEFAULT_CFG.payme, ...pm.payme },
-        click: { ...DEFAULT_CFG.click, ...pm.click },
-        uzumbank: { ...DEFAULT_CFG.uzumbank, ...pm.uzumbank },
-        paynet: { ...DEFAULT_CFG.paynet, ...pm.paynet },
-        visaCard: { ...DEFAULT_CFG.visaCard, ...pm.visaCard },
-        uzcardCard: { ...DEFAULT_CFG.uzcardCard, ...pm.uzcardCard },
+        payme: { ...DEFAULT_CFG.payme, ...pmConfig.payme },
+        click: { ...DEFAULT_CFG.click, ...pmConfig.click },
+        uzumbank: { ...DEFAULT_CFG.uzumbank, ...pmConfig.uzumbank },
+        paynet: { ...DEFAULT_CFG.paynet, ...pmConfig.paynet },
+        visaCard: { ...DEFAULT_CFG.visaCard, ...pmConfig.visaCard },
+        uzcardCard: { ...DEFAULT_CFG.uzcardCard, ...pmConfig.uzcardCard },
       });
       setInitialized(true);
     }
-  }, [settings, initialized]);
+  }, [pmConfig, initialized]);
 
   const saveMutation = useMutation({
     mutationFn: () => api.put("/site-settings", { paymentMethods: cfg }),

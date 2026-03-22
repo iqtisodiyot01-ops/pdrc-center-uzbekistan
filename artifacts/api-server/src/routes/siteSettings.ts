@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, siteSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireSuperAdmin } from "../middlewares/auth";
+import { requireSuperAdmin, requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -67,6 +67,8 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   },
 };
 
+const PUBLIC_KEYS = ["contacts", "branding", "theme", "hero", "footer", "buttons", "social", "siteTexts"];
+
 async function ensureDefaults() {
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     const existing = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, key)).limit(1);
@@ -76,12 +78,20 @@ async function ensureDefaults() {
   }
 }
 
+async function getPaymentMethodsConfig(): Promise<Record<string, Record<string, unknown>>> {
+  const [row] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "paymentMethods")).limit(1);
+  const defaultPm = DEFAULT_SETTINGS.paymentMethods as Record<string, Record<string, unknown>>;
+  return (row?.value as Record<string, Record<string, unknown>>) ?? defaultPm;
+}
+
 router.get("/site-settings", async (_req, res) => {
   await ensureDefaults();
   const rows = await db.select().from(siteSettingsTable);
   const result: Record<string, unknown> = {};
   for (const row of rows) {
-    result[row.key] = row.value;
+    if (PUBLIC_KEYS.includes(row.key)) {
+      result[row.key] = row.value;
+    }
   }
   res.json(result);
 });
@@ -105,10 +115,14 @@ router.put("/site-settings", requireSuperAdmin, async (req, res) => {
   res.json(results);
 });
 
-router.get("/payment-methods", async (_req, res) => {
+router.get("/admin/payment-methods-config", requireSuperAdmin, async (_req, res) => {
   await ensureDefaults();
-  const [row] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "paymentMethods")).limit(1);
-  const cfg = (row?.value as Record<string, Record<string, unknown>> | null) ?? (DEFAULT_SETTINGS.paymentMethods as Record<string, Record<string, unknown>>);
+  const cfg = await getPaymentMethodsConfig();
+  res.json(cfg);
+});
+
+router.get("/payment-methods", async (_req, res) => {
+  const cfg = await getPaymentMethodsConfig();
 
   const result: Record<string, unknown> = {};
 
@@ -119,27 +133,64 @@ router.get("/payment-methods", async (_req, res) => {
     result.click = { enabled: true };
   }
   if (cfg.uzumbank?.enabled) {
-    result.uzumbank = { enabled: true, url: cfg.uzumbank.url || "" };
+    result.uzumbank = { enabled: true };
   }
   if (cfg.paynet?.enabled) {
-    result.paynet = { enabled: true, url: cfg.paynet.url || "" };
+    result.paynet = { enabled: true };
   }
   if (cfg.visaCard?.enabled) {
     const cn = String(cfg.visaCard.cardNumber || "");
     result.visaCard = {
       enabled: true,
-      cardNumberMasked: cn.length > 4 ? "**** **** **** " + cn.slice(-4) : cn,
-      cardNumber: cn,
-      cardHolder: cfg.visaCard.cardHolder || "",
+      cardNumberMasked: cn.length >= 4 ? `**** **** **** ${cn.slice(-4)}` : "•••• •••• •••• ••••",
+      cardHolder: String(cfg.visaCard.cardHolder || ""),
     };
   }
   if (cfg.uzcardCard?.enabled) {
     const cn = String(cfg.uzcardCard.cardNumber || "");
     result.uzcardCard = {
       enabled: true,
-      cardNumberMasked: cn.length > 4 ? "**** **** **** " + cn.slice(-4) : cn,
+      cardNumberMasked: cn.length >= 4 ? `**** **** **** ${cn.slice(-4)}` : "•••• •••• •••• ••••",
+      cardHolder: String(cfg.uzcardCard.cardHolder || ""),
+    };
+  }
+
+  res.json(result);
+});
+
+router.get("/payment-methods/details", requireAuth, async (_req, res) => {
+  const cfg = await getPaymentMethodsConfig();
+
+  const result: Record<string, unknown> = {};
+
+  if (cfg.payme?.enabled) {
+    result.payme = { enabled: true };
+  }
+  if (cfg.click?.enabled) {
+    result.click = { enabled: true };
+  }
+  if (cfg.uzumbank?.enabled) {
+    result.uzumbank = { enabled: true };
+  }
+  if (cfg.paynet?.enabled) {
+    result.paynet = { enabled: true };
+  }
+  if (cfg.visaCard?.enabled) {
+    const cn = String(cfg.visaCard.cardNumber || "");
+    result.visaCard = {
+      enabled: true,
       cardNumber: cn,
-      cardHolder: cfg.uzcardCard.cardHolder || "",
+      cardNumberMasked: cn.length >= 4 ? `**** **** **** ${cn.slice(-4)}` : "•••• •••• •••• ••••",
+      cardHolder: String(cfg.visaCard.cardHolder || ""),
+    };
+  }
+  if (cfg.uzcardCard?.enabled) {
+    const cn = String(cfg.uzcardCard.cardNumber || "");
+    result.uzcardCard = {
+      enabled: true,
+      cardNumber: cn,
+      cardNumberMasked: cn.length >= 4 ? `**** **** **** ${cn.slice(-4)}` : "•••• •••• •••• ••••",
+      cardHolder: String(cfg.uzcardCard.cardHolder || ""),
     };
   }
 

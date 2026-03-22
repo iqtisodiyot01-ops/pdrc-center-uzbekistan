@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, productOrdersTable } from "@workspace/db";
+import { db, productOrdersTable, siteSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import crypto from "crypto";
@@ -12,6 +12,11 @@ function md5(s: string) {
 
 function getAppUrl() {
   return process.env.APP_URL || "https://pdrcenteruzbekistan.com";
+}
+
+async function getPaymentMethodsCfg(): Promise<Record<string, Record<string, unknown>>> {
+  const [row] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "paymentMethods")).limit(1);
+  return (row?.value as Record<string, Record<string, unknown>>) ?? {};
 }
 
 router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
@@ -35,7 +40,8 @@ router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
   const amountInTiyn = order.total * 100;
 
   if (order.paymentMethod === "payme") {
-    const merchantId = process.env.PAYME_MERCHANT_ID;
+    const cfg = await getPaymentMethodsCfg();
+    const merchantId = cfg.payme?.merchantId as string | undefined || process.env.PAYME_MERCHANT_ID;
     if (!merchantId) {
       res.status(503).json({ error: "Service unavailable", message: "Payme not configured" });
       return;
@@ -48,8 +54,9 @@ router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
   }
 
   if (order.paymentMethod === "click") {
-    const serviceId = process.env.CLICK_SERVICE_ID;
-    const merchantId = process.env.CLICK_MERCHANT_ID;
+    const cfg = await getPaymentMethodsCfg();
+    const serviceId = cfg.click?.serviceId as string | undefined || process.env.CLICK_SERVICE_ID;
+    const merchantId = cfg.click?.merchantId as string | undefined || process.env.CLICK_MERCHANT_ID;
     if (!serviceId || !merchantId) {
       res.status(503).json({ error: "Service unavailable", message: "Click not configured" });
       return;
@@ -63,6 +70,24 @@ router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
       currency: "UZS",
     });
     res.json({ url: `https://my.click.uz/services/pay?${params}` });
+    return;
+  }
+
+  if (order.paymentMethod === "uzumbank" || order.paymentMethod === "paynet") {
+    const cfg = await getPaymentMethodsCfg();
+    const methodCfg = cfg[order.paymentMethod];
+    const baseUrl = methodCfg?.url as string | undefined;
+    if (!baseUrl) {
+      res.status(503).json({ error: "Service unavailable", message: `${order.paymentMethod} not configured` });
+      return;
+    }
+    const params = new URLSearchParams({
+      amount: order.total.toString(),
+      order_id: orderId.toString(),
+      return_url: returnUrl,
+    });
+    const separator = baseUrl.includes("?") ? "&" : "?";
+    res.json({ url: `${baseUrl}${separator}${params}` });
     return;
   }
 
