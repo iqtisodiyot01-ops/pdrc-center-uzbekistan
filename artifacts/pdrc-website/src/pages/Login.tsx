@@ -32,7 +32,11 @@ export default function Login() {
         setToken(data.token);
         setUser(data.user);
         toast({ title: t.auth.login_success, description: t.auth.login_success_desc });
-        setLocation("/");
+        if (data.user.role === "admin" || data.user.role === "superadmin") {
+          setLocation("/admin");
+        } else {
+          setLocation("/");
+        }
       },
       onError: (err: Error) => {
         toast({

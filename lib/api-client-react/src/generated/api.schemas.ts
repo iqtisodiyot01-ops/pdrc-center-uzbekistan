@@ -39,6 +39,7 @@ export interface UserProfile {
   email: string;
   phone?: string | null;
   role: string;
+  permissions?: Record<string, boolean> | null;
   createdAt: string;
 }
 
