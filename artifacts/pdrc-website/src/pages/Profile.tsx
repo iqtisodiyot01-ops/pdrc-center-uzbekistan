@@ -5,7 +5,8 @@ import { useAppStore } from "@/store/use-store";
 import { api } from "@/lib/api";
 import {
   User, ShoppingBag, Heart, ShoppingCart, LogOut,
-  Package, ArrowUpDown, Trash2, ChevronRight,
+  Package, ArrowUpDown, Trash2, ChevronRight, ChevronDown,
+  Clock, CheckCircle2, Box, Truck, MapPin,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -15,12 +16,65 @@ interface Product {
 }
 interface CartRow { id: number; quantity: number; product: Product | null; }
 interface WishRow { id: number; createdAt: string; product: Product | null; }
+interface OrderItem {
+  productId: number; productName: string; price: number; quantity: number;
+}
 interface Order {
   id: number; total: number; status: string; paymentMethod: string;
-  deliveryAddress: string; createdAt: string; items: unknown;
+  deliveryAddress: string; createdAt: string; items: OrderItem[] | unknown;
 }
 
 type SortKey = "price" | "name" | "date";
+
+const ORDER_STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered"] as const;
+
+function OrderTimeline({ status, lang }: { status: string; lang: string }) {
+  const statusLabels: Record<string, Record<string, string>> = {
+    pending: { uz: "Kutilmoqda", ru: "\u0412 \u043e\u0436\u0438\u0434\u0430\u043d\u0438\u0438", en: "Pending" },
+    confirmed: { uz: "Tasdiqlangan", ru: "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d", en: "Confirmed" },
+    preparing: { uz: "Tayyorlanmoqda", ru: "\u0413\u043e\u0442\u043e\u0432\u0438\u0442\u0441\u044f", en: "Preparing" },
+    shipped: { uz: "Yetkazilmoqda", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442\u0441\u044f", en: "Shipped" },
+    delivered: { uz: "Yetkazildi", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d", en: "Delivered" },
+  };
+  const statusIcons = [Clock, CheckCircle2, Box, Truck, MapPin];
+
+  const currentIndex = ORDER_STATUSES.indexOf(status as typeof ORDER_STATUSES[number]);
+
+  return (
+    <div className="flex items-center w-full mt-3 mb-1">
+      {ORDER_STATUSES.map((s, i) => {
+        const Icon = statusIcons[i];
+        const isCompleted = i <= currentIndex;
+        const isCurrent = i === currentIndex;
+        return (
+          <div key={s} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center relative">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                isCurrent
+                  ? "bg-blue-700 text-white ring-4 ring-blue-100"
+                  : isCompleted
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-200 text-gray-400"
+              }`}>
+                <Icon size={14} />
+              </div>
+              <span className={`text-[10px] mt-1 font-medium text-center leading-tight whitespace-nowrap ${
+                isCurrent ? "text-blue-700 font-bold" : isCompleted ? "text-green-600" : "text-gray-400"
+              }`}>
+                {statusLabels[s]?.[lang] || s}
+              </span>
+            </div>
+            {i < ORDER_STATUSES.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-1 mt-[-14px] ${
+                i < currentIndex ? "bg-green-400" : "bg-gray-200"
+              }`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Profile() {
   const { lang, user, logout, token } = useAppStore();
@@ -29,6 +83,7 @@ export default function Profile() {
   const [wishSort, setWishSort] = useState<SortKey>("date");
   const [cartSort, setCartSort] = useState<SortKey>("name");
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "wishlist" | "cart">("overview");
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
   const { data: cartRows = [] } = useQuery<CartRow[]>({
     queryKey: ["cart"],
@@ -94,24 +149,30 @@ export default function Profile() {
       byDate: "Sana bo'yicha",
       total: "Jami",
       som: "so'm",
-      status: { pending: "Kutilmoqda", confirmed: "Tasdiqlangan", delivered: "Yetkazildi", cancelled: "Bekor qilindi" },
+      items: "ta mahsulot",
+      delivery: "Yetkazib berish",
+      payment: "To'lov",
+      orderDetails: "Buyurtma tafsilotlari",
     },
     ru: {
-      profile: "Профиль",
-      orders: "Заказы",
-      wishlist: "Сохранённые",
-      cart: "Корзина",
-      logout: "Выйти",
-      noOrders: "Заказов нет",
-      noWishlist: "Нет сохранённых товаров",
-      noCart: "Корзина пуста",
-      sort: "Сортировка",
-      byPrice: "По цене",
-      byName: "По названию",
-      byDate: "По дате",
-      total: "Итого",
-      som: "сум",
-      status: { pending: "В ожидании", confirmed: "Подтверждён", delivered: "Доставлен", cancelled: "Отменён" },
+      profile: "\u041f\u0440\u043e\u0444\u0438\u043b\u044c",
+      orders: "\u0417\u0430\u043a\u0430\u0437\u044b",
+      wishlist: "\u0421\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435",
+      cart: "\u041a\u043e\u0440\u0437\u0438\u043d\u0430",
+      logout: "\u0412\u044b\u0439\u0442\u0438",
+      noOrders: "\u0417\u0430\u043a\u0430\u0437\u043e\u0432 \u043d\u0435\u0442",
+      noWishlist: "\u041d\u0435\u0442 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0445 \u0442\u043e\u0432\u0430\u0440\u043e\u0432",
+      noCart: "\u041a\u043e\u0440\u0437\u0438\u043d\u0430 \u043f\u0443\u0441\u0442\u0430",
+      sort: "\u0421\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u043a\u0430",
+      byPrice: "\u041f\u043e \u0446\u0435\u043d\u0435",
+      byName: "\u041f\u043e \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044e",
+      byDate: "\u041f\u043e \u0434\u0430\u0442\u0435",
+      total: "\u0418\u0442\u043e\u0433\u043e",
+      som: "\u0441\u0443\u043c",
+      items: "\u0442\u043e\u0432\u0430\u0440\u043e\u0432",
+      delivery: "\u0414\u043e\u0441\u0442\u0430\u0432\u043a\u0430",
+      payment: "\u041e\u043f\u043b\u0430\u0442\u0430",
+      orderDetails: "\u0414\u0435\u0442\u0430\u043b\u0438 \u0437\u0430\u043a\u0430\u0437\u0430",
     },
     en: {
       profile: "Profile",
@@ -128,21 +189,43 @@ export default function Profile() {
       byDate: "By date",
       total: "Total",
       som: "UZS",
-      status: { pending: "Pending", confirmed: "Confirmed", delivered: "Delivered", cancelled: "Cancelled" },
+      items: "items",
+      delivery: "Delivery",
+      payment: "Payment",
+      orderDetails: "Order details",
     },
   }[lang] ?? {
     profile: "Profile", orders: "Orders", wishlist: "Saved", cart: "Cart", logout: "Logout",
     noOrders: "No orders", noWishlist: "No saved", noCart: "Empty", sort: "Sort",
     byPrice: "By price", byName: "By name", byDate: "By date", total: "Total", som: "UZS",
-    status: { pending: "Pending", confirmed: "Confirmed", delivered: "Delivered", cancelled: "Cancelled" },
+    items: "items", delivery: "Delivery", payment: "Payment", orderDetails: "Order details",
   };
 
   const statusColor = (s: string) => ({
-    pending: "bg-yellow-100 text-yellow-800",
-    confirmed: "bg-blue-100 text-blue-800",
-    delivered: "bg-green-100 text-green-800",
-    cancelled: "bg-red-100 text-red-800",
-  }[s] || "bg-gray-100 text-gray-700");
+    pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    confirmed: "bg-blue-100 text-blue-800 border-blue-200",
+    preparing: "bg-purple-100 text-purple-800 border-purple-200",
+    shipped: "bg-orange-100 text-orange-800 border-orange-200",
+    delivered: "bg-green-100 text-green-800 border-green-200",
+  }[s] || "bg-gray-100 text-gray-700 border-gray-200");
+
+  const statusLabel = (s: string) => {
+    const labels: Record<string, Record<string, string>> = {
+      pending: { uz: "Kutilmoqda", ru: "\u0412 \u043e\u0436\u0438\u0434\u0430\u043d\u0438\u0438", en: "Pending" },
+      confirmed: { uz: "Tasdiqlangan", ru: "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d", en: "Confirmed" },
+      preparing: { uz: "Tayyorlanmoqda", ru: "\u0413\u043e\u0442\u043e\u0432\u0438\u0442\u0441\u044f", en: "Preparing" },
+      shipped: { uz: "Yetkazilmoqda", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442\u0441\u044f", en: "Shipped" },
+      delivered: { uz: "Yetkazildi", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d", en: "Delivered" },
+    };
+    return labels[s]?.[lang] || s;
+  };
+
+  const paymentLabels: Record<string, string> = {
+    cash: lang === "uz" ? "Naqd pul" : lang === "ru" ? "\u041d\u0430\u043b\u0438\u0447\u043d\u044b\u0435" : "Cash",
+    payme: "Payme",
+    click: "Click",
+    card: lang === "uz" ? "Bank o'tkazmasi" : lang === "ru" ? "\u0411\u0430\u043d\u043a\u043e\u0432\u0441\u043a\u0438\u0439 \u043f\u0435\u0440\u0435\u0432\u043e\u0434" : "Bank transfer",
+  };
 
   const tabs = [
     { key: "overview", label: t.profile, icon: User },
@@ -153,7 +236,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero */}
       <section className="bg-[#0f3460] py-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
@@ -162,7 +244,7 @@ export default function Profile() {
             </div>
             <div className="min-w-0">
               <h1 className="text-xl md:text-2xl font-heading font-bold text-white leading-tight truncate">
-                {user?.name || "—"}
+                {user?.name || "\u2014"}
               </h1>
               <p className="text-blue-200 text-sm truncate">{user?.email}</p>
               {user?.phone && <p className="text-blue-300 text-xs">{user.phone}</p>}
@@ -178,7 +260,6 @@ export default function Profile() {
         </div>
       </section>
 
-      {/* Stats bar */}
       <section className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-3 divide-x divide-gray-200">
@@ -197,7 +278,6 @@ export default function Profile() {
         </div>
       </section>
 
-      {/* Tabs */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <div className="flex gap-1 bg-white rounded-xl border border-gray-200 p-1 mb-6 overflow-x-auto">
           {tabs.map((tab) => (
@@ -221,9 +301,7 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* Tab content */}
         <div className="pb-12">
-
           {activeTab === "overview" && (
             <div className="space-y-4">
               {[
@@ -256,28 +334,63 @@ export default function Profile() {
                   <ShoppingBag size={40} className="text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500 text-sm">{t.noOrders}</p>
                 </div>
-              ) : orders.map((order) => (
-                <div key={order.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <span className="font-bold text-gray-900">#{order.id}</span>
-                      <span className="ml-2 text-xs text-gray-400">
-                        {new Date(order.createdAt).toLocaleDateString(lang === "ru" ? "ru-RU" : lang === "en" ? "en-US" : "uz-UZ")}
-                      </span>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusColor(order.status)}`}>
-                      {t.status[order.status as keyof typeof t.status] || order.status}
-                    </span>
+              ) : orders.map((order) => {
+                const isExpanded = expandedOrder === order.id;
+                const items = Array.isArray(order.items) ? order.items as OrderItem[] : [];
+                return (
+                  <div key={order.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                      className="w-full p-4 text-left"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900">#{order.id}</span>
+                          <span className="text-xs text-gray-400">
+                            {new Date(order.createdAt).toLocaleDateString(lang === "ru" ? "ru-RU" : lang === "en" ? "en-US" : "uz-UZ")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColor(order.status)}`}>
+                            {statusLabel(order.status)}
+                          </span>
+                          <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                        </div>
+                      </div>
+                      <OrderTimeline status={order.status} lang={lang} />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+                        {items.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t.orderDetails}</p>
+                            {items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+                                <span className="text-gray-700">{item.productName} <span className="text-gray-400">\u00d7{item.quantity}</span></span>
+                                <span className="font-semibold text-gray-900">{(item.price * item.quantity).toLocaleString()} {t.som}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 font-medium mb-0.5">{t.delivery}</p>
+                            <p className="text-gray-700">{order.deliveryAddress}</p>
+                          </div>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-xs text-gray-400 font-medium mb-0.5">{t.payment}</p>
+                            <p className="text-gray-700">{paymentLabels[order.paymentMethod] || order.paymentMethod}</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <span className="text-lg font-bold text-[#0f3460]">{t.total}: {order.total.toLocaleString()} {t.som}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-600 mb-2 truncate">📍 {order.deliveryAddress}</div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">
-                      {lang === "uz" ? "To'lov" : lang === "ru" ? "Оплата" : "Payment"}: {order.paymentMethod}
-                    </span>
-                    <span className="font-bold text-[#0f3460]">{order.total.toLocaleString()} {t.som}</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -285,7 +398,7 @@ export default function Profile() {
             <div>
               {wishRows.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-gray-500">{wishRows.length} {lang === "uz" ? "ta" : lang === "ru" ? "шт" : "items"}</span>
+                  <span className="text-sm text-gray-500">{wishRows.length} {lang === "uz" ? "ta" : lang === "ru" ? "\u0448\u0442" : "items"}</span>
                   <div className="flex gap-1">
                     {(["date", "price", "name"] as SortKey[]).map((s) => (
                       <button
@@ -343,7 +456,7 @@ export default function Profile() {
             <div>
               {cartRows.length > 0 && (
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-gray-500">{cartRows.length} {lang === "uz" ? "ta" : lang === "ru" ? "шт" : "items"}</span>
+                  <span className="text-sm text-gray-500">{cartRows.length} {lang === "uz" ? "ta" : lang === "ru" ? "\u0448\u0442" : "items"}</span>
                   <div className="flex gap-1">
                     {(["name", "price"] as SortKey[]).map((s) => (
                       <button
@@ -383,7 +496,7 @@ export default function Profile() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-900 line-clamp-1">{getProductName(p)}</p>
                             <p className="text-xs font-bold text-[#0f3460] mt-0.5">{(p.price * row.quantity).toLocaleString()} {t.som}</p>
-                            <p className="text-xs text-gray-400">{p.price.toLocaleString()} × {row.quantity}</p>
+                            <p className="text-xs text-gray-400">{p.price.toLocaleString()} \u00d7 {row.quantity}</p>
                           </div>
                           <button
                             onClick={() => removeFromCart.mutate(row.id)}
@@ -403,7 +516,6 @@ export default function Profile() {
               )}
             </div>
           )}
-
         </div>
       </div>
     </div>

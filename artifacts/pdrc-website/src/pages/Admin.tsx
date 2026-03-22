@@ -13,14 +13,46 @@ import type { ServiceInput, ProductInput, CourseInput, ArticleInput, Booking, Se
 import { useAppStore } from "@/store/use-store";
 import { useTranslation } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Settings, Calendar, Wrench, ShoppingCart, GraduationCap, Plus, Trash2, FileText, Users, Edit } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import {
+  Loader2, Settings, Calendar, Wrench, ShoppingCart, GraduationCap,
+  Plus, Trash2, FileText, Users, Edit, Package, Clock, CheckCircle2,
+  Box, Truck, MapPin, ChevronDown, BarChart3,
+} from "lucide-react";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { api } from "@/lib/api";
 
-type AdminTab = "bookings" | "services" | "products" | "courses" | "articles" | "users";
+type AdminTab = "orders" | "bookings" | "services" | "products" | "courses" | "articles" | "users";
 type BookingStatus = "new" | "in_progress" | "completed" | "cancelled";
+
+const ORDER_STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered"] as const;
+type OrderStatus = typeof ORDER_STATUSES[number];
+
+interface AdminOrder {
+  id: number;
+  userId: number;
+  userName: string | null;
+  userEmail: string | null;
+  items: { productName: string; price: number; quantity: number }[];
+  total: number;
+  fullName: string;
+  phone: string;
+  deliveryAddress: string;
+  paymentMethod: string;
+  status: string;
+  paymentStatus: string;
+  paymentId: string | null;
+  createdAt: string;
+}
+
+interface AdminOrdersResponse {
+  orders: AdminOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 
 const serviceSchema = z.object({
   nameUz: z.string().min(1),
@@ -84,17 +116,28 @@ function labelClass() {
   return "text-xs font-bold text-gray-600 uppercase tracking-wider";
 }
 
+const statusConfig: Record<string, { color: string; icon: typeof Clock; label: Record<string, string> }> = {
+  pending: { color: "bg-yellow-100 text-yellow-800 border-yellow-200", icon: Clock, label: { uz: "Kutilmoqda", ru: "\u0412 \u043e\u0436\u0438\u0434\u0430\u043d\u0438\u0438", en: "Pending" } },
+  confirmed: { color: "bg-blue-100 text-blue-800 border-blue-200", icon: CheckCircle2, label: { uz: "Tasdiqlangan", ru: "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d", en: "Confirmed" } },
+  preparing: { color: "bg-purple-100 text-purple-800 border-purple-200", icon: Box, label: { uz: "Tayyorlanmoqda", ru: "\u0413\u043e\u0442\u043e\u0432\u0438\u0442\u0441\u044f", en: "Preparing" } },
+  shipped: { color: "bg-orange-100 text-orange-800 border-orange-200", icon: Truck, label: { uz: "Yetkazilmoqda", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442\u0441\u044f", en: "Shipped" } },
+  delivered: { color: "bg-green-100 text-green-800 border-green-200", icon: MapPin, label: { uz: "Yetkazildi", ru: "\u0414\u043e\u0441\u0442\u0430\u0432\u043b\u0435\u043d", en: "Delivered" } },
+};
+
 export default function Admin() {
-  const { token, user } = useAppStore();
+  const { token, user, lang } = useAppStore();
   const { t } = useTranslation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<AdminTab>("bookings");
+  const [activeTab, setActiveTab] = useState<AdminTab>("orders");
   const [showServiceForm, setShowServiceForm] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("");
+  const [orderPage, setOrderPage] = useState(1);
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
   const requestOpts = { headers: authHeaders(token) };
 
@@ -108,7 +151,26 @@ export default function Admin() {
     );
   }
 
-  // -- Bookings --
+  const { data: adminOrders, isLoading: ordersLoading } = useQuery<AdminOrdersResponse>({
+    queryKey: ["admin-orders", orderStatusFilter, orderPage],
+    queryFn: () => {
+      const params = new URLSearchParams({ page: String(orderPage), limit: "20" });
+      if (orderStatusFilter) params.set("status", orderStatusFilter);
+      return api.get<AdminOrdersResponse>(`/admin/orders?${params.toString()}`);
+    },
+    enabled: !!token,
+  });
+
+  const updateOrderStatus = useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      api.patch(`/admin/orders/${id}/status`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] });
+      toast({ title: lang === "uz" ? "Status yangilandi" : lang === "ru" ? "\u0421\u0442\u0430\u0442\u0443\u0441 \u043e\u0431\u043d\u043e\u0432\u043b\u0451\u043d" : "Status updated" });
+    },
+    onError: () => toast({ variant: "destructive", title: t.admin.error }),
+  });
+
   const { data: bookings, isLoading: bookingsLoading } = useGetBookings({
     query: { enabled: !!token, queryKey: getGetBookingsQueryKey() },
     request: requestOpts
@@ -118,7 +180,6 @@ export default function Admin() {
     mutation: { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetBookingsQueryKey() }) }
   });
 
-  // -- Services --
   const { data: services } = useGetServices({
     query: { enabled: !!token, queryKey: getGetServicesQueryKey() },
     request: requestOpts
@@ -146,7 +207,6 @@ export default function Admin() {
     }
   });
 
-  // -- Products --
   const { data: products } = useGetProducts(undefined, {
     query: { enabled: !!token, queryKey: getGetProductsQueryKey() },
     request: requestOpts
@@ -174,7 +234,6 @@ export default function Admin() {
     }
   });
 
-  // -- Courses --
   const { data: courses } = useGetCourses({
     query: { enabled: !!token, queryKey: getGetCoursesQueryKey() },
     request: requestOpts
@@ -202,7 +261,6 @@ export default function Admin() {
     }
   });
 
-  // -- Articles --
   const { data: articles } = useGetArticles({
     query: { enabled: !!token, queryKey: getGetArticlesQueryKey() },
     request: requestOpts
@@ -253,7 +311,6 @@ export default function Admin() {
     setShowArticleForm(true);
   };
 
-  // -- Users --
   const { data: adminUsers } = useGetAdminUsers({
     query: { enabled: !!token, queryKey: getGetAdminUsersQueryKey() },
     request: requestOpts
@@ -279,6 +336,7 @@ export default function Admin() {
   });
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    { id: "orders", label: lang === "uz" ? "Buyurtmalar" : lang === "ru" ? "\u0417\u0430\u043a\u0430\u0437\u044b" : "Orders", icon: <Package size={16} /> },
     { id: "bookings", label: t.admin.tab_bookings, icon: <Calendar size={16} /> },
     { id: "services", label: t.admin.tab_services, icon: <Wrench size={16} /> },
     { id: "products", label: t.admin.tab_products, icon: <ShoppingCart size={16} /> },
@@ -287,9 +345,17 @@ export default function Admin() {
     { id: "users", label: t.admin.tab_users, icon: <Users size={16} /> },
   ];
 
+  const orderStats = adminOrders ? {
+    total: adminOrders.total,
+    pending: adminOrders.orders.filter(o => o.status === "pending").length,
+    confirmed: adminOrders.orders.filter(o => o.status === "confirmed").length,
+    preparing: adminOrders.orders.filter(o => o.status === "preparing").length,
+    shipped: adminOrders.orders.filter(o => o.status === "shipped").length,
+    delivered: adminOrders.orders.filter(o => o.status === "delivered").length,
+  } : null;
+
   return (
     <div className="w-full pb-24 bg-gray-50">
-      {/* Header */}
       <div className="bg-[#0f3460] py-16">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-4 mb-2">
@@ -302,7 +368,6 @@ export default function Admin() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 mt-8">
         <div className="flex gap-2 border-b border-gray-200 pb-0 overflow-x-auto">
           {tabs.map((tab) => (
@@ -320,7 +385,171 @@ export default function Admin() {
         </div>
 
         <div className="mt-8">
-          {/* BOOKINGS TAB */}
+
+          {activeTab === "orders" && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                {[
+                  { key: "", label: lang === "uz" ? "Barchasi" : lang === "ru" ? "\u0412\u0441\u0435" : "All", count: orderStats?.total || 0, color: "bg-gray-100 text-gray-700 border-gray-200" },
+                  ...ORDER_STATUSES.map((s) => ({
+                    key: s,
+                    label: statusConfig[s]?.label[lang] || s,
+                    count: orderStats?.[s as keyof typeof orderStats] || 0,
+                    color: statusConfig[s]?.color || "bg-gray-100 text-gray-700 border-gray-200",
+                  })),
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => { setOrderStatusFilter(item.key); setOrderPage(1); }}
+                    className={`p-3 rounded-xl border text-center transition-all ${
+                      orderStatusFilter === item.key
+                        ? "ring-2 ring-blue-500 border-blue-300 shadow-md"
+                        : "hover:shadow-sm"
+                    } ${item.color}`}
+                  >
+                    <div className="text-2xl font-bold">{item.count}</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider mt-1">{item.label}</div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Package className="text-blue-700" />
+                    <h2 className="text-xl font-bold text-gray-900 uppercase tracking-wider">
+                      {lang === "uz" ? "Buyurtmalar" : lang === "ru" ? "\u0417\u0430\u043a\u0430\u0437\u044b" : "Orders"}
+                    </h2>
+                  </div>
+                  {adminOrders && (
+                    <span className="text-sm text-gray-500">
+                      {adminOrders.total} {lang === "uz" ? "ta" : lang === "ru" ? "\u0448\u0442" : "total"}
+                    </span>
+                  )}
+                </div>
+
+                {ordersLoading ? (
+                  <div className="flex justify-center py-16"><Loader2 className="w-10 h-10 text-blue-600 animate-spin" /></div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {adminOrders?.orders.map((order) => {
+                      const isExpanded = expandedOrderId === order.id;
+                      const items = Array.isArray(order.items) ? order.items : [];
+                      const cfg = statusConfig[order.status];
+                      return (
+                        <div key={order.id} className="hover:bg-gray-50/50 transition-colors">
+                          <div className="p-4 flex items-start gap-4 cursor-pointer" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-1">
+                                <span className="font-bold text-gray-900 text-base">#{order.id}</span>
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${cfg?.color || "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                                  {cfg?.label[lang] || order.status}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {new Date(order.createdAt).toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US")}
+                                  {" "}
+                                  {new Date(order.createdAt).toLocaleTimeString(lang === "ru" ? "ru-RU" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                                <span className="text-gray-700 font-medium">{order.fullName}</span>
+                                <span className="text-blue-600 font-mono text-xs">{order.phone}</span>
+                                <span className="text-gray-500 truncate max-w-[200px]">{order.deliveryAddress}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <span className="font-bold text-[#0f3460] text-base">{order.total.toLocaleString()} <span className="text-xs text-gray-400">UZS</span></span>
+                              <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="px-4 pb-4 space-y-3">
+                              <div className="bg-gray-50 rounded-xl p-4">
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                  {lang === "uz" ? "Mahsulotlar" : lang === "ru" ? "\u0422\u043e\u0432\u0430\u0440\u044b" : "Items"}
+                                </p>
+                                <div className="space-y-1.5">
+                                  {items.map((item: { productName: string; price: number; quantity: number }, idx: number) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                      <span className="text-gray-700">{item.productName} <span className="text-gray-400">\u00d7{item.quantity}</span></span>
+                                      <span className="font-semibold">{(item.price * item.quantity).toLocaleString()} UZS</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm font-semibold text-gray-700">
+                                  {lang === "uz" ? "Statusni o'zgartirish:" : lang === "ru" ? "\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441:" : "Change status:"}
+                                </span>
+                                <div className="flex gap-1.5 flex-wrap">
+                                  {ORDER_STATUSES.map((s) => {
+                                    const c = statusConfig[s];
+                                    const isCurrent = order.status === s;
+                                    return (
+                                      <button
+                                        key={s}
+                                        onClick={() => {
+                                          if (!isCurrent) updateOrderStatus.mutate({ id: order.id, status: s });
+                                        }}
+                                        disabled={isCurrent || updateOrderStatus.isPending}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                                          isCurrent
+                                            ? `${c.color} ring-2 ring-offset-1 ring-blue-400`
+                                            : `${c.color} opacity-60 hover:opacity-100 cursor-pointer`
+                                        } disabled:cursor-default`}
+                                      >
+                                        {c.label[lang] || s}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {order.userName && (
+                                <div className="text-xs text-gray-400">
+                                  {lang === "uz" ? "Foydalanuvchi:" : lang === "ru" ? "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c:" : "User:"} {order.userName} ({order.userEmail})
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {(!adminOrders?.orders || adminOrders.orders.length === 0) && (
+                      <div className="p-12 text-center text-zinc-500 uppercase tracking-widest text-sm">
+                        {lang === "uz" ? "Buyurtmalar yo'q" : lang === "ru" ? "\u0417\u0430\u043a\u0430\u0437\u043e\u0432 \u043d\u0435\u0442" : "No orders"}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {adminOrders && adminOrders.total > adminOrders.pageSize && (
+                  <div className="flex items-center justify-center gap-2 p-4 border-t border-gray-100">
+                    <button
+                      onClick={() => setOrderPage(Math.max(1, orderPage - 1))}
+                      disabled={orderPage <= 1}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                    >
+                      \u2190
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      {orderPage} / {Math.ceil(adminOrders.total / adminOrders.pageSize)}
+                    </span>
+                    <button
+                      onClick={() => setOrderPage(orderPage + 1)}
+                      disabled={orderPage >= Math.ceil(adminOrders.total / adminOrders.pageSize)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 hover:bg-gray-200 disabled:opacity-50 transition-colors"
+                    >
+                      \u2192
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === "bookings" && (
             <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
               <div className="p-6 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
@@ -394,7 +623,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* SERVICES TAB */}
           {activeTab === "services" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -443,10 +671,10 @@ export default function Admin() {
                 {services?.map((svc: Service) => (
                   <div key={svc.id} className="bg-white rounded-xl border border-gray-200 p-5 flex items-start justify-between gap-4 hover:border-blue-200 transition-colors">
                     <div>
-                      <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">{svc.category ?? "—"}</div>
+                      <div className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-1">{svc.category ?? "\u2014"}</div>
                       <div className="font-bold text-gray-900">{svc.nameEn}</div>
                       <div className="text-gray-500 text-sm">{svc.nameUz} / {svc.nameRu}</div>
-                      <div className="text-blue-700 text-sm font-mono mt-1">{svc.price ? `${svc.price.toLocaleString()} UZS` : "—"}</div>
+                      <div className="text-blue-700 text-sm font-mono mt-1">{svc.price ? `${svc.price.toLocaleString()} UZS` : "\u2014"}</div>
                     </div>
                     <button
                       onClick={() => deleteService.mutate({ id: svc.id })}
@@ -460,7 +688,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* PRODUCTS TAB */}
           {activeTab === "products" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -531,7 +758,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* COURSES TAB */}
           {activeTab === "courses" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -604,7 +830,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ARTICLES TAB */}
           {activeTab === "articles" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -718,7 +943,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* USERS TAB */}
           {activeTab === "users" && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">

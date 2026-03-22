@@ -16,7 +16,7 @@ Paintless Dent Repair markazining to'liq veb-sayti. React + TypeScript, pnpm mon
 ## Saytda mavjud bo'limlar
 
 - **Asosiy sahifa** — Hero, xizmatlar, kurslar, galereya, sharhlar
-- **Do'kon (Shop)** — Mahsulotlar, savatcha (cart), buyurtmalar, wishlist
+- **Do'kon (Shop)** — Mahsulotlar katalogi, savatcha (cart), buyurtmalar, wishlist
 - **Kurslar** — PDR kurslari ro'yxati va batafsil ma'lumot
 - **Xizmatlar** — PDR xizmatlari
 - **Galereya** — Ishlar galereya
@@ -25,9 +25,20 @@ Paintless Dent Repair markazining to'liq veb-sayti. React + TypeScript, pnpm mon
 - **Aloqa** — Kontakt ma'lumotlar
 - **Yetkazib berish** — Delivery sahifasi
 - **Login/Register** — Foydalanuvchi autentifikatsiyasi
-- **Profil** — Foydalanuvchi profili, buyurtmalar tarixi
-- **Admin panel** — Buyurtmalar, foydalanuvchilar, statistika boshqaruvi
-- **To'lov** — To'lov integratsiyasi (Stripe)
+- **Profil** — Foydalanuvchi profili, buyurtmalar tarixi, 5-bosqichli buyurtma kuzatuvi
+- **Admin panel** — Buyurtmalar, mahsulotlar, xizmatlar, kurslar, maqolalar, foydalanuvchilar boshqaruvi
+- **To'lov** — To'lov integratsiyasi (Payme, Click, naqd, bank o'tkazmasi)
+
+## Buyurtma holatlari (Order Status Flow)
+
+pending → confirmed → preparing → shipped → delivered
+
+## Telegram bildirishnomalar
+
+Yangi buyurtma berilganda admin Telegram kanalga xabar yuboriladi.
+- `TELEGRAM_BOT_TOKEN` — Bot token
+- `TELEGRAM_CHAT_ID` — Chat/kanal ID
+- Utility: `artifacts/api-server/src/lib/telegram.ts`
 
 ## Texnik stack
 
@@ -35,29 +46,42 @@ Paintless Dent Repair markazining to'liq veb-sayti. React + TypeScript, pnpm mon
 - **Backend:** Express.js 5, TypeScript, tsx
 - **DB:** Drizzle ORM (PostgreSQL)
 - **Auth:** JWT + bcryptjs
-- **Til:** Uzbek/Rus interfeysi
+- **Til:** Uzbek/Rus/English interfeysi
 
 ## Workflowlar
 
-- `PDR Center Website` — Frontend (port 5000, webview)
-- `Backend API` — Backend (port 8080, console)
+- `artifacts/pdrc-website: web` — Frontend (port 18940)
+- `artifacts/api-server: API Server` — Backend (port 8080)
+- `artifacts/mockup-sandbox: Component Preview Server` — Mockup sandbox (port 8081)
 
 ## Muhim buyruqlar
 
 ```bash
 # Frontend ishga tushurish
-PORT=5000 BASE_PATH=/ pnpm --filter @workspace/pdrc-website run dev
+pnpm --filter @workspace/pdrc-website run dev
 
 # Backend ishga tushurish
-PORT=8080 pnpm --filter @workspace/api-server run dev
+pnpm --filter @workspace/api-server run dev
 
 # Barcha paketlarni o'rnatish
 pnpm install
+
+# DB sxemasini push qilish
+pnpm --filter @workspace/db exec drizzle-kit push
+
+# Seed ma'lumotlar
+scripts/node_modules/.bin/tsx scripts/src/seed.ts
 ```
 
 ## Muhit o'zgaruvchilari
 
-- `JWT_SECRET` — JWT token uchun maxfiy kalit (shared, .replit da sozlangan)
-- `DATABASE_URL` — PostgreSQL ulanish URL (kerak bo'lsa qo'shiladi)
+- `JWT_SECRET` — JWT token uchun maxfiy kalit
+- `DATABASE_URL` — PostgreSQL ulanish URL
+- `TELEGRAM_BOT_TOKEN` — Telegram bot tokeni (buyurtma bildirishnomalari uchun)
+- `TELEGRAM_CHAT_ID` — Telegram chat ID (admin xabarlari uchun)
 - `PORT` — Server porti (workflow tomonidan beriladi)
-- `BASE_PATH` — Vite base path (frontend uchun)
+
+## Admin kirish
+
+- Email: admin@pdrcenteruzbekistan.com
+- Parol: admin123
