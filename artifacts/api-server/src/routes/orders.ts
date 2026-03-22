@@ -20,8 +20,8 @@ router.post("/orders", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const { fullName, phone, deliveryAddress, paymentMethod, items, total } = req.body;
 
-  if (!fullName || !phone || !deliveryAddress || !paymentMethod) {
-    res.status(400).json({ error: "Bad request", message: "fullName, phone, deliveryAddress, paymentMethod required" });
+  if (!fullName || !phone || !deliveryAddress) {
+    res.status(400).json({ error: "Bad request", message: "fullName, phone, deliveryAddress required" });
     return;
   }
 
@@ -29,6 +29,8 @@ router.post("/orders", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Bad request", message: "items must be a non-empty array" });
     return;
   }
+
+  const effectivePaymentMethod = paymentMethod || "pending";
 
   const [order] = await db
     .insert(productOrdersTable)
@@ -39,7 +41,7 @@ router.post("/orders", requireAuth, async (req, res) => {
       fullName,
       phone,
       deliveryAddress,
-      paymentMethod,
+      paymentMethod: effectivePaymentMethod,
       status: "pending",
     })
     .returning();
@@ -51,12 +53,42 @@ router.post("/orders", requireAuth, async (req, res) => {
     fullName,
     phone,
     deliveryAddress,
-    paymentMethod,
+    paymentMethod: effectivePaymentMethod,
     total: total || 0,
     items,
   }).catch((err) => console.error("Telegram notification failed:", err));
 
   res.status(201).json(order);
+});
+
+router.patch("/orders/:id/payment-method", requireAuth, async (req, res) => {
+  const orderId = parseInt(req.params.id);
+  const userId = req.user!.userId;
+  const { paymentMethod } = req.body as { paymentMethod: string };
+
+  if (!paymentMethod) {
+    res.status(400).json({ error: "Bad request", message: "paymentMethod required" });
+    return;
+  }
+
+  const [order] = await db
+    .select()
+    .from(productOrdersTable)
+    .where(eq(productOrdersTable.id, orderId))
+    .limit(1);
+
+  if (!order || order.userId !== userId) {
+    res.status(404).json({ error: "Not found", message: "Order not found" });
+    return;
+  }
+
+  const [updated] = await db
+    .update(productOrdersTable)
+    .set({ paymentMethod })
+    .where(eq(productOrdersTable.id, orderId))
+    .returning();
+
+  res.json(updated);
 });
 
 export default router;

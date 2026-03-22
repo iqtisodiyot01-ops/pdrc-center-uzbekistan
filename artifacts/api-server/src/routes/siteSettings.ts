@@ -57,6 +57,14 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
     youtubeUrl: "https://youtube.com/@pdrcenteruzbekistan",
     whatsappUrl: "https://wa.me/998905783272",
   },
+  paymentMethods: {
+    payme: { enabled: false, merchantId: "", secretKey: "" },
+    click: { enabled: false, serviceId: "", merchantId: "", secretKey: "" },
+    uzumbank: { enabled: false, url: "" },
+    paynet: { enabled: false, url: "" },
+    visaCard: { enabled: false, cardNumber: "", cardHolder: "" },
+    uzcardCard: { enabled: false, cardNumber: "", cardHolder: "" },
+  },
 };
 
 async function ensureDefaults() {
@@ -95,6 +103,47 @@ router.put("/site-settings", requireSuperAdmin, async (req, res) => {
     results[row.key] = row.value;
   }
   res.json(results);
+});
+
+router.get("/payment-methods", async (_req, res) => {
+  await ensureDefaults();
+  const [row] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "paymentMethods")).limit(1);
+  const cfg = (row?.value as Record<string, Record<string, unknown>> | null) ?? (DEFAULT_SETTINGS.paymentMethods as Record<string, Record<string, unknown>>);
+
+  const result: Record<string, unknown> = {};
+
+  if (cfg.payme?.enabled) {
+    result.payme = { enabled: true };
+  }
+  if (cfg.click?.enabled) {
+    result.click = { enabled: true };
+  }
+  if (cfg.uzumbank?.enabled) {
+    result.uzumbank = { enabled: true, url: cfg.uzumbank.url || "" };
+  }
+  if (cfg.paynet?.enabled) {
+    result.paynet = { enabled: true, url: cfg.paynet.url || "" };
+  }
+  if (cfg.visaCard?.enabled) {
+    const cn = String(cfg.visaCard.cardNumber || "");
+    result.visaCard = {
+      enabled: true,
+      cardNumberMasked: cn.length > 4 ? "**** **** **** " + cn.slice(-4) : cn,
+      cardNumber: cn,
+      cardHolder: cfg.visaCard.cardHolder || "",
+    };
+  }
+  if (cfg.uzcardCard?.enabled) {
+    const cn = String(cfg.uzcardCard.cardNumber || "");
+    result.uzcardCard = {
+      enabled: true,
+      cardNumberMasked: cn.length > 4 ? "**** **** **** " + cn.slice(-4) : cn,
+      cardNumber: cn,
+      cardHolder: cfg.uzcardCard.cardHolder || "",
+    };
+  }
+
+  res.json(result);
 });
 
 export default router;

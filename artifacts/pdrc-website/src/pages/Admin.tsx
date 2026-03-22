@@ -16,6 +16,7 @@ import { ContentSection } from "@/components/admin/ContentSection";
 import { CategoriesSection } from "@/components/admin/CategoriesSection";
 import { ContactInfoSection } from "@/components/admin/ContactInfoSection";
 import { SiteTextsSection } from "@/components/admin/SiteTextsSection";
+import { PaymentMethodsSection } from "@/components/admin/PaymentMethodsSection";
 
 function PermissionDenied() {
   const { lang } = useAppStore();
@@ -259,6 +260,9 @@ export default function Admin() {
       case "siteTexts":
         if (user?.role !== "superadmin") return <PermissionDenied />;
         return <SiteTextsSection />;
+      case "paymentMethods":
+        if (user?.role !== "superadmin") return <PermissionDenied />;
+        return <PaymentMethodsSection />;
       case "settings":
         return <SettingsSection />;
       default:

@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import {
-  X, ShoppingCart, Plus, Minus, Trash2, Phone, Send, Package,
+  X, ShoppingCart, Plus, Minus, Trash2, Package,
   CreditCard, ExternalLink, ArrowRight, ChevronLeft, CheckCircle2,
-  ShoppingBag, Tag,
+  ShoppingBag, Tag, Copy, Check, Loader2,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-store";
 import { api } from "@/lib/api";
@@ -18,28 +18,126 @@ interface Product {
 interface CartRow { id: number; quantity: number; createdAt: string; product: Product | null; }
 interface OrderItem { productId: number; productName: string; price: number; quantity: number; }
 
+interface PaymentMethodsResponse {
+  payme?: { enabled: true };
+  click?: { enabled: true };
+  uzumbank?: { enabled: true; url: string };
+  paynet?: { enabled: true; url: string };
+  visaCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
+  uzcardCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
+}
+
 interface CartDrawerProps { open: boolean; onClose: () => void; }
 
-const PAYMENT_METHODS = [
-  { value: "cash", uz: "Naqd pul", en: "Cash", ru: "Наличные", icon: "💵" },
-  { value: "payme", uz: "Payme", en: "Payme", ru: "Payme", icon: "🔵", redirect: true },
-  { value: "click", uz: "Click", en: "Click", ru: "Click", icon: "🟢", redirect: true },
-  { value: "card", uz: "Bank o'tkazmasi", en: "Bank transfer", ru: "Банк. перевод", icon: "🏦" },
-];
+function CopyableCard({ cardNumber, cardHolder, lang }: { cardNumber: string; cardHolder: string; lang: string }) {
+  const [copied, setCopied] = useState(false);
+  const copyCard = () => {
+    navigator.clipboard.writeText(cardNumber.replace(/\s/g, "")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="bg-gradient-to-br from-[#0f3460] to-[#1a4f8a] rounded-2xl p-4 text-white shadow-lg mt-2">
+      <div className="flex items-center justify-between mb-4">
+        <CreditCard size={20} className="text-blue-200" />
+        <span className="text-xs text-blue-200 font-medium uppercase tracking-wider">
+          {lang === "uz" ? "O'tkazma karta" : lang === "ru" ? "Карта для перевода" : "Transfer Card"}
+        </span>
+      </div>
+      <div className="font-mono text-lg font-bold tracking-[0.15em] mb-3 flex items-center gap-3">
+        <span>{cardNumber || "•••• •••• •••• ••••"}</span>
+        <button
+          onClick={copyCard}
+          className="ml-auto p-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          {copied ? <Check size={14} className="text-green-300" /> : <Copy size={14} className="text-blue-200" />}
+        </button>
+      </div>
+      {cardHolder && (
+        <div className="text-xs text-blue-200 uppercase tracking-widest">{cardHolder}</div>
+      )}
+      <p className="text-[10px] text-blue-300/70 mt-3">
+        {lang === "uz"
+          ? "Yuqoridagi karta raqamiga to'lov summasi o'tkazing va admin bilan bog'laning"
+          : lang === "ru"
+          ? "Переведите сумму оплаты на карту выше и свяжитесь с администратором"
+          : "Transfer the payment amount to the card above and contact admin"}
+      </p>
+    </div>
+  );
+}
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { lang, token } = useAppStore();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [checkout, setCheckout] = useState(false);
-  const [form, setForm] = useState({ fullName: "", phone: "", deliveryAddress: "", paymentMethod: "cash" });
-  const [orderSuccess, setOrderSuccess] = useState<{ id: number; paymentMethod: string } | null>(null);
-  const [redirectLoading, setRedirectLoading] = useState(false);
+  const [form, setForm] = useState({ fullName: "", phone: "", deliveryAddress: "" });
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
+  const [redirectLoading, setRedirectLoading] = useState<string | null>(null);
+  const [shownCard, setShownCard] = useState<"visaCard" | "uzcardCard" | null>(null);
+
+  const t = {
+    uz: {
+      title: "Mening savatim", empty: "Savat bo'sh", emptyDesc: "Hali hech narsa qo'shilmagan",
+      toCatalog: "Katalogga o'tish", total: "Jami summa", order: "Buyurtma rasmiylashtirish",
+      back: "Savatga qaytish", fullName: "To'liq ism", phone: "Telefon raqam",
+      address: "Yetkazib berish manzili", confirm: "Tasdiqlash",
+      successTitle: "Buyurtma qabul qilindi!", successDesc: (id: number) => `Buyurtma №${id} muvaffaqiyatli yuborildi.`,
+      payNow: (pm: string) => `${pm} orqali to'lash`, payLater: "Keyinroq to'layman",
+      close: "Yopish", items: (n: number) => `${n} ta mahsulot`, som: "so'm",
+      choosePayment: "To'lov usulini tanlang", intlCards: "Xalqaro kartalar (Visa / Mastercard)",
+      uzbCards: "Uzcard / Humo kartalar", directTransfer: "Karta raqamiga o'tkazma",
+      noMethods: "To'lov usuli sozlanmagan. Admin bilan bog'laning.", sending: "Yuborilmoqda...",
+      redirect: "Yo'naltirilmoqda...",
+    },
+    ru: {
+      title: "Моя корзина", empty: "Корзина пуста", emptyDesc: "Добавьте товары из каталога",
+      toCatalog: "Перейти в каталог", total: "Итого", order: "Оформить заказ",
+      back: "Назад в корзину", fullName: "Полное имя", phone: "Номер телефона",
+      address: "Адрес доставки", confirm: "Подтвердить заказ",
+      successTitle: "Заказ принят!", successDesc: (id: number) => `Заказ №${id} оформлен.`,
+      payNow: (pm: string) => `Оплатить через ${pm}`, payLater: "Оплачу позже",
+      close: "Закрыть", items: (n: number) => `${n} товаров`, som: "сум",
+      choosePayment: "Выберите способ оплаты", intlCards: "Международные карты (Visa / Mastercard)",
+      uzbCards: "Карты Uzcard / Humo", directTransfer: "Перевод на карту",
+      noMethods: "Способы оплаты не настроены. Свяжитесь с администратором.", sending: "Отправка...",
+      redirect: "Перенаправление...",
+    },
+    en: {
+      title: "My Cart", empty: "Your cart is empty", emptyDesc: "Add products from the catalog",
+      toCatalog: "Go to catalog", total: "Total", order: "Place Order",
+      back: "Back to cart", fullName: "Full name", phone: "Phone number",
+      address: "Delivery address", confirm: "Confirm order",
+      successTitle: "Order placed!", successDesc: (id: number) => `Order #${id} placed successfully.`,
+      payNow: (pm: string) => `Pay with ${pm}`, payLater: "Pay later",
+      close: "Close", items: (n: number) => `${n} items`, som: "UZS",
+      choosePayment: "Choose payment method", intlCards: "International Cards (Visa / Mastercard)",
+      uzbCards: "Uzcard / Humo Cards", directTransfer: "Direct card transfer",
+      noMethods: "No payment methods configured. Contact admin.", sending: "Sending...",
+      redirect: "Redirecting...",
+    },
+  }[lang as "uz" | "ru" | "en"] ?? {
+    title: "Cart", empty: "Empty", emptyDesc: "Add products", toCatalog: "Catalog",
+    total: "Total", order: "Order", back: "Back", fullName: "Name", phone: "Phone",
+    address: "Address", confirm: "Confirm", successTitle: "Done!",
+    successDesc: (id: number) => `Order #${id}`, payNow: (pm: string) => `Pay ${pm}`,
+    payLater: "Later", close: "Close", items: (n: number) => `${n}`, som: "UZS",
+    choosePayment: "Choose payment", intlCards: "International", uzbCards: "Local",
+    directTransfer: "Card transfer", noMethods: "No payment methods.", sending: "Sending...", redirect: "...",
+  };
 
   const { data: cartRows = [] } = useQuery<CartRow[]>({
     queryKey: ["cart"],
     queryFn: () => api.get<CartRow[]>("/cart"),
     enabled: !!token && open,
+  });
+
+  const { data: paymentMethods } = useQuery<PaymentMethodsResponse>({
+    queryKey: ["payment-methods"],
+    queryFn: () => api.get<PaymentMethodsResponse>("/payment-methods"),
+    enabled: open,
   });
 
   const updateQty = useMutation({
@@ -56,7 +154,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     mutationFn: (payload: { fullName: string; phone: string; deliveryAddress: string; paymentMethod: string; items: OrderItem[]; total: number }) =>
       api.post<{ id: number }>("/orders", payload),
     onSuccess: (data) => {
-      setOrderSuccess({ id: data.id, paymentMethod: form.paymentMethod });
+      setCreatedOrderId(data.id);
       qc.invalidateQueries({ queryKey: ["cart"] });
       qc.invalidateQueries({ queryKey: ["orders"] });
     },
@@ -77,42 +175,56 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
       productId: r.product!.id, productName: getProductName(r.product!),
       price: getEffectivePrice(r.product!), quantity: r.quantity,
     }));
-    placeOrder.mutate({ ...form, items, total });
+    placeOrder.mutate({ ...form, paymentMethod: "pending", items, total });
   };
 
-  const handlePayRedirect = async (orderId: number) => {
-    setRedirectLoading(true);
+  const handleRedirectPayment = async (method: "payme" | "click", orderId: number) => {
+    setRedirectLoading(method);
     try {
+      await api.patch(`/orders/${orderId}/payment-method`, { paymentMethod: method });
       const data = await api.get<{ url: string }>(`/payments/checkout-url/${orderId}`);
       window.location.href = data.url;
     } catch {
       toast({ title: lang === "uz" ? "To'lov tizimi sozlanmagan" : lang === "ru" ? "Платёжная система не настроена" : "Payment not configured", variant: "destructive" });
-      setRedirectLoading(false);
+      setRedirectLoading(null);
     }
   };
 
-  const isPaymentRedirect = orderSuccess && (orderSuccess.paymentMethod === "payme" || orderSuccess.paymentMethod === "click");
-  const selectedPm = PAYMENT_METHODS.find((p) => p.value === form.paymentMethod);
+  const handleUrlRedirect = async (method: "uzumbank" | "paynet", url: string, orderId: number) => {
+    setRedirectLoading(method);
+    try {
+      await api.patch(`/orders/${orderId}/payment-method`, { paymentMethod: method });
+      window.open(url, "_blank");
+    } catch {
+      window.open(url, "_blank");
+    } finally {
+      setRedirectLoading(null);
+    }
+  };
 
-  const t = {
-    uz: { title: "Mening savatim", empty: "Savat bo'sh", emptyDesc: "Hali hech narsa qo'shilmagan", toCatalog: "Katalogga o'tish", total: "Jami summa", order: "Buyurtma rasmiylashtirish", back: "Savatga qaytish", fullName: "To'liq ism", phone: "Telefon raqam", address: "Yetkazib berish manzili", payment: "To'lov usuli", confirm: "Tasdiqlash", successTitle: "Buyurtma qabul qilindi!", successDesc: (id: number) => `Buyurtma №${id} muvaffaqiyatli yuborildi. Tez orada siz bilan bog'lanamiz.`, payNow: (pm: string) => `${pm} orqali to'lash`, payLater: "Keyinroq to'layman", payInfo: "To'lov sahifasiga yo'naltirilasiz", close: "Yopish", items: (n: number) => `${n} ta mahsulot`, som: "so'm" },
-    ru: { title: "Моя корзина", empty: "Корзина пуста", emptyDesc: "Добавьте товары из каталога", toCatalog: "Перейти в каталог", total: "Итого", order: "Оформить заказ", back: "Назад в корзину", fullName: "Полное имя", phone: "Номер телефона", address: "Адрес доставки", payment: "Способ оплаты", confirm: "Подтвердить заказ", successTitle: "Заказ принят!", successDesc: (id: number) => `Заказ №${id} оформлен. Мы свяжемся с вами в ближайшее время.`, payNow: (pm: string) => `Оплатить через ${pm}`, payLater: "Оплачу позже", payInfo: "Вы будете перенаправлены на страницу оплаты", close: "Закрыть", items: (n: number) => `${n} товаров`, som: "сум" },
-    en: { title: "My Cart", empty: "Your cart is empty", emptyDesc: "Add products from the catalog", toCatalog: "Go to catalog", total: "Total", order: "Place Order", back: "Back to cart", fullName: "Full name", phone: "Phone number", address: "Delivery address", payment: "Payment method", confirm: "Confirm order", successTitle: "Order placed!", successDesc: (id: number) => `Order #${id} placed successfully. We'll contact you soon.`, payNow: (pm: string) => `Pay with ${pm}`, payLater: "Pay later", payInfo: "You will be redirected to the payment page", close: "Close", items: (n: number) => `${n} items`, som: "UZS" },
-  }[lang as "uz" | "ru" | "en"] ?? { title: "Cart", empty: "Cart is empty", emptyDesc: "Add products", toCatalog: "Catalog", total: "Total", order: "Order", back: "Back", fullName: "Name", phone: "Phone", address: "Address", payment: "Payment", confirm: "Confirm", successTitle: "Done!", successDesc: (id: number) => `Order #${id}`, payNow: (pm: string) => `Pay ${pm}`, payLater: "Later", payInfo: "Redirect", close: "Close", items: (n: number) => `${n}`, som: "UZS" };
+  const handleClose = () => {
+    setCreatedOrderId(null);
+    setCheckout(false);
+    setShownCard(null);
+    setRedirectLoading(null);
+    onClose();
+  };
+
+  const hasAnyMethod = paymentMethods && Object.keys(paymentMethods).length > 0;
+  const hasIntl = paymentMethods && (paymentMethods.payme || paymentMethods.click || paymentMethods.visaCard);
+  const hasLocal = paymentMethods && (paymentMethods.uzumbank || paymentMethods.paynet || paymentMethods.uzcardCard);
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-[200]"
-            onClick={onClose}
+            onClick={handleClose}
           />
 
-          {/* Drawer */}
           <motion.div
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -125,23 +237,25 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
-                    <ShoppingCart size={18} className="text-white" />
+                    {createdOrderId ? <CheckCircle2 size={18} className="text-green-300" /> : <ShoppingCart size={18} className="text-white" />}
                   </div>
                   <div>
-                    <h2 className="font-bold text-white text-base leading-none">{t.title}</h2>
-                    {cartRows.length > 0 && (
+                    <h2 className="font-bold text-white text-base leading-none">
+                      {createdOrderId ? t.successTitle : t.title}
+                    </h2>
+                    {!createdOrderId && cartRows.length > 0 && (
                       <p className="text-blue-200 text-xs mt-0.5">{t.items(itemCount)}</p>
                     )}
                   </div>
                 </div>
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="w-8 h-8 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
                 >
                   <X size={18} />
                 </button>
               </div>
-              {!orderSuccess && !checkout && cartRows.length > 0 && (
+              {!createdOrderId && !checkout && cartRows.length > 0 && (
                 <div className="bg-white/10 rounded-xl px-3.5 py-2 flex items-center justify-between">
                   <span className="text-white/80 text-xs font-medium">{t.total}</span>
                   <span className="text-white font-bold text-sm">{total.toLocaleString()} {t.som}</span>
@@ -149,67 +263,156 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
               )}
             </div>
 
-            {/* ── SUCCESS STATE ── */}
-            {orderSuccess !== null ? (
-              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-5">
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
-                  className="w-24 h-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-200"
-                >
-                  <CheckCircle2 size={48} className="text-white" strokeWidth={2.5} />
-                </motion.div>
+            {/* ── STEP 3: PAYMENT SELECTION ── */}
+            {createdOrderId !== null ? (
+              <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+                <div className="text-center mb-2">
+                  <p className="text-sm text-gray-600">{t.successDesc(createdOrderId)}</p>
+                  <p className="text-base font-bold text-gray-900 mt-2">{t.choosePayment}</p>
+                </div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{t.successTitle}</h3>
-                  <p className="text-gray-500 text-sm leading-relaxed max-w-[260px] mx-auto">
-                    {t.successDesc(orderSuccess.id)}
-                  </p>
-                </motion.div>
+                {!hasAnyMethod && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center text-sm text-amber-700">
+                    {t.noMethods}
+                  </div>
+                )}
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="w-full space-y-3">
-                  {isPaymentRedirect ? (
-                    <>
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3.5 flex items-start gap-3">
-                        <CreditCard size={16} className="text-blue-600 shrink-0 mt-0.5" />
-                        <div className="text-left">
-                          <p className="text-xs font-semibold text-blue-800 mb-0.5">{t.payInfo}</p>
-                          <p className="text-xs text-blue-600">{orderSuccess.paymentMethod === "payme" ? "Payme" : "Click"}</p>
+                {hasIntl && (
+                  <div>
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">{t.intlCards}</h3>
+                    <div className="space-y-2">
+                      {paymentMethods?.payme && (
+                        <button
+                          onClick={() => handleRedirectPayment("payme", createdOrderId)}
+                          disabled={redirectLoading !== null}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100/50 hover:border-blue-400 hover:from-blue-100 hover:to-blue-200/50 transition-all disabled:opacity-50 text-left"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shrink-0">P</div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-gray-900 text-sm block">Payme</span>
+                            <span className="text-xs text-gray-500">Visa, Mastercard</span>
+                          </div>
+                          {redirectLoading === "payme" ? <Loader2 size={18} className="animate-spin text-blue-600 shrink-0" /> : <ExternalLink size={16} className="text-blue-400 shrink-0" />}
+                        </button>
+                      )}
+
+                      {paymentMethods?.click && (
+                        <button
+                          onClick={() => handleRedirectPayment("click", createdOrderId)}
+                          disabled={redirectLoading !== null}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-green-100/50 hover:border-green-400 hover:from-green-100 hover:to-green-200/50 transition-all disabled:opacity-50 text-left"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white font-black text-sm shrink-0">C</div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-gray-900 text-sm block">Click</span>
+                            <span className="text-xs text-gray-500">Visa, Mastercard</span>
+                          </div>
+                          {redirectLoading === "click" ? <Loader2 size={18} className="animate-spin text-green-600 shrink-0" /> : <ExternalLink size={16} className="text-green-400 shrink-0" />}
+                        </button>
+                      )}
+
+                      {paymentMethods?.visaCard && (
+                        <div>
+                          <button
+                            onClick={() => setShownCard(shownCard === "visaCard" ? null : "visaCard")}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-purple-100/50 hover:border-purple-400 hover:from-purple-100 hover:to-purple-200/50 transition-all text-left"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white shrink-0">
+                              <CreditCard size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-bold text-gray-900 text-sm block">{t.directTransfer}</span>
+                              <span className="text-xs text-gray-500">Visa / Mastercard</span>
+                            </div>
+                            <ArrowRight size={16} className={`text-purple-400 shrink-0 transition-transform ${shownCard === "visaCard" ? "rotate-90" : ""}`} />
+                          </button>
+                          {shownCard === "visaCard" && (
+                            <CopyableCard
+                              cardNumber={paymentMethods.visaCard.cardNumber}
+                              cardHolder={paymentMethods.visaCard.cardHolder as string}
+                              lang={lang}
+                            />
+                          )}
                         </div>
-                      </div>
-                      <button
-                        onClick={() => handlePayRedirect(orderSuccess.id)}
-                        disabled={redirectLoading}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 disabled:opacity-60 transition-all"
-                      >
-                        {redirectLoading ? <span className="animate-pulse text-sm">...</span> : <><ExternalLink size={16} />{t.payNow(orderSuccess.paymentMethod === "payme" ? "Payme" : "Click")}</>}
-                      </button>
-                      <button onClick={() => { setOrderSuccess(null); setCheckout(false); onClose(); }} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                        {t.payLater}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex gap-2.5">
-                        <a href="tel:+998905783272" className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-[#0f3460] text-white rounded-xl text-sm font-bold hover:bg-blue-800 transition-colors">
-                          <Phone size={14} />
-                          {lang === "uz" ? "Qo'ng'iroq" : lang === "ru" ? "Позвонить" : "Call"}
-                        </a>
-                        <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer" className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-blue-500 text-white rounded-xl text-sm font-bold hover:bg-blue-600 transition-colors">
-                          <Send size={14} />Telegram
-                        </a>
-                      </div>
-                      <button onClick={() => { setOrderSuccess(null); setCheckout(false); onClose(); }} className="w-full py-2.5 text-sm text-gray-400 underline hover:text-gray-600 transition-colors">
-                        {t.close}
-                      </button>
-                    </>
-                  )}
-                </motion.div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {hasLocal && (
+                  <div>
+                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-2 px-1">{t.uzbCards}</h3>
+                    <div className="space-y-2">
+                      {paymentMethods?.uzumbank && (
+                        <button
+                          onClick={() => handleUrlRedirect("uzumbank", paymentMethods.uzumbank!.url, createdOrderId)}
+                          disabled={redirectLoading !== null}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-orange-100/50 hover:border-orange-400 hover:from-orange-100 hover:to-orange-200/50 transition-all disabled:opacity-50 text-left"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center text-white font-black text-sm shrink-0">U</div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-gray-900 text-sm block">Uzumbank</span>
+                            <span className="text-xs text-gray-500">Uzcard, Humo</span>
+                          </div>
+                          {redirectLoading === "uzumbank" ? <Loader2 size={18} className="animate-spin text-orange-600 shrink-0" /> : <ExternalLink size={16} className="text-orange-400 shrink-0" />}
+                        </button>
+                      )}
+
+                      {paymentMethods?.paynet && (
+                        <button
+                          onClick={() => handleUrlRedirect("paynet", paymentMethods.paynet!.url, createdOrderId)}
+                          disabled={redirectLoading !== null}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-teal-200 bg-gradient-to-r from-teal-50 to-teal-100/50 hover:border-teal-400 hover:from-teal-100 hover:to-teal-200/50 transition-all disabled:opacity-50 text-left"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center text-white font-black text-sm shrink-0">N</div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-gray-900 text-sm block">Paynet</span>
+                            <span className="text-xs text-gray-500">Uzcard, Humo</span>
+                          </div>
+                          {redirectLoading === "paynet" ? <Loader2 size={18} className="animate-spin text-teal-600 shrink-0" /> : <ExternalLink size={16} className="text-teal-400 shrink-0" />}
+                        </button>
+                      )}
+
+                      {paymentMethods?.uzcardCard && (
+                        <div>
+                          <button
+                            onClick={() => setShownCard(shownCard === "uzcardCard" ? null : "uzcardCard")}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50 to-indigo-100/50 hover:border-indigo-400 hover:from-indigo-100 hover:to-indigo-200/50 transition-all text-left"
+                          >
+                            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0">
+                              <CreditCard size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-bold text-gray-900 text-sm block">{t.directTransfer}</span>
+                              <span className="text-xs text-gray-500">Uzcard / Humo</span>
+                            </div>
+                            <ArrowRight size={16} className={`text-indigo-400 shrink-0 transition-transform ${shownCard === "uzcardCard" ? "rotate-90" : ""}`} />
+                          </button>
+                          {shownCard === "uzcardCard" && (
+                            <CopyableCard
+                              cardNumber={paymentMethods.uzcardCard.cardNumber}
+                              cardHolder={paymentMethods.uzcardCard.cardHolder as string}
+                              lang={lang}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    onClick={handleClose}
+                    className="w-full py-3 text-sm text-gray-400 hover:text-gray-600 transition-colors border border-gray-200 rounded-xl hover:bg-gray-50"
+                  >
+                    {t.payLater}
+                  </button>
+                </div>
               </div>
 
             ) : checkout ? (
-              /* ── CHECKOUT FORM ── */
+              /* ── STEP 2: CHECKOUT FORM ── */
               <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-gray-100 flex items-center gap-2">
                   <button onClick={() => setCheckout(false)} className="flex items-center gap-1.5 text-blue-700 hover:text-blue-900 text-sm font-semibold transition-colors">
@@ -272,39 +475,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                       )}
                     </div>
                   ))}
-
-                  {/* Payment method */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">{t.payment}</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {PAYMENT_METHODS.map((pm) => (
-                        <button
-                          key={pm.value}
-                          onClick={() => setForm({ ...form, paymentMethod: pm.value })}
-                          className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 ${
-                            form.paymentMethod === pm.value
-                              ? "bg-[#0f3460] text-white border-[#0f3460] shadow-md shadow-blue-100"
-                              : "bg-white text-gray-700 border-gray-200 hover:border-blue-300"
-                          }`}
-                        >
-                          <span className="text-sm">{pm.icon}</span>
-                          <span>{lang === "ru" ? pm.ru : lang === "en" ? pm.en : pm.uz}</span>
-                        </button>
-                      ))}
-                    </div>
-                    {selectedPm?.redirect && (
-                      <div className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
-                        <CreditCard size={13} className="text-blue-600 mt-0.5 shrink-0" />
-                        <p className="text-xs text-blue-700 leading-snug">
-                          {lang === "uz"
-                            ? `Tasdiqlashdan so'ng ${selectedPm.uz} sahifasiga yo'naltirilasiz`
-                            : lang === "ru"
-                            ? `После подтверждения вы будете перенаправлены на ${selectedPm.ru}`
-                            : `After confirmation you'll be redirected to ${selectedPm.en}`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50">
@@ -314,21 +484,18 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     className="w-full py-3.5 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 active:scale-[0.98] transition-all disabled:opacity-60 text-sm flex items-center justify-center gap-2"
                   >
                     {placeOrder.isPending ? (
-                      <span className="animate-pulse">{lang === "uz" ? "Yuborilmoqda..." : lang === "ru" ? "Отправка..." : "Sending..."}</span>
-                    ) : selectedPm?.redirect ? (
-                      <><ExternalLink size={15} />{lang === "uz" ? "To'lovga o'tish" : lang === "ru" ? "Перейти к оплате" : "Proceed to payment"}</>
+                      <><Loader2 size={16} className="animate-spin" />{t.sending}</>
                     ) : (
-                      <><CheckCircle2 size={16} />{t.confirm}</>
+                      <><ArrowRight size={16} />{t.confirm}</>
                     )}
                   </button>
                 </div>
               </div>
 
             ) : (
-              /* ── CART ITEMS ── */
+              /* ── STEP 1: CART ITEMS ── */
               <div className="flex-1 flex flex-col overflow-hidden">
                 {cartRows.length === 0 ? (
-                  /* Empty state */
                   <div className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-5">
                     <motion.div
                       initial={{ scale: 0, opacity: 0 }}
@@ -356,7 +523,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                       <Link
                         href="/shop"
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-blue-700 text-white font-bold rounded-xl hover:bg-blue-800 active:scale-[0.98] transition-all text-sm"
                       >
                         <Tag size={15} />
@@ -367,7 +534,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   </div>
                 ) : (
                   <>
-                    {/* Items list */}
                     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
                       <AnimatePresence initial={false}>
                         {cartRows.map((row, i) => {
@@ -385,30 +551,23 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                               className="flex gap-3 bg-white rounded-2xl p-3 border border-gray-100 hover:border-blue-100 hover:shadow-sm transition-all"
                             >
                               {p.imageUrl ? (
-                                <img src={p.imageUrl} alt={getProductName(p)} className="w-[68px] h-[68px] rounded-xl object-cover shrink-0 border border-gray-100" />
+                                <img src={p.imageUrl} className="w-20 h-20 rounded-xl object-cover shrink-0" alt={getProductName(p)} />
                               ) : (
-                                <div className="w-[68px] h-[68px] rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                                <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shrink-0">
                                   <Package size={22} className="text-gray-300" />
                                 </div>
                               )}
-
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug mb-1">
-                                  {getProductName(p)}
-                                </p>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm font-bold text-[#0f3460]">
-                                    {(effectivePrice * row.quantity).toLocaleString()} {t.som}
-                                  </span>
-                                  {hasDiscount && (
-                                    <span className="text-xs text-gray-400 line-through">
-                                      {(p.price * row.quantity).toLocaleString()}
-                                    </span>
-                                  )}
+                              <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+                                <div>
+                                  <p className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{getProductName(p)}</p>
+                                  <div className="flex items-center gap-2 mt-1.5">
+                                    <span className="font-bold text-[#0f3460] text-sm">{effectivePrice.toLocaleString()} {t.som}</span>
+                                    {hasDiscount && (
+                                      <span className="text-xs text-gray-400 line-through">{p.price.toLocaleString()}</span>
+                                    )}
+                                  </div>
                                 </div>
-
                                 <div className="flex items-center justify-between mt-2">
-                                  {/* Qty controls */}
                                   <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
                                     <button
                                       onClick={() => row.quantity > 1 ? updateQty.mutate({ id: row.id, quantity: row.quantity - 1 }) : removeItem.mutate(row.id)}
@@ -424,7 +583,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                                       <Plus size={11} />
                                     </button>
                                   </div>
-                                  {/* Unit price */}
                                   <span className="text-xs text-gray-400">{effectivePrice.toLocaleString()} × {row.quantity}</span>
                                 </div>
                               </div>
@@ -434,7 +592,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                       </AnimatePresence>
                     </div>
 
-                    {/* Footer */}
                     <div className="px-4 pb-4 pt-3 border-t border-gray-100 bg-gradient-to-b from-white to-gray-50/50 space-y-3">
                       <div className="flex items-center justify-between px-1">
                         <span className="text-sm text-gray-500 font-medium">{t.total}</span>

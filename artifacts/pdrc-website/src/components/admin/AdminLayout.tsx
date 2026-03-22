@@ -4,14 +4,14 @@ import {
   LayoutDashboard, Package, MessageSquare, Wrench, ShoppingCart,
   GraduationCap, FileText, Users, Image, Star, Megaphone,
   DollarSign, Settings, ChevronLeft, ChevronRight, Menu, LogOut, Shield,
-  Calendar, Tag, Phone, Type, ExternalLink,
+  Calendar, Tag, Phone, Type, ExternalLink, CreditCard,
 } from "lucide-react";
 
 export type AdminSection =
   | "dashboard" | "orders" | "messages" | "bookings"
   | "products" | "categories" | "services" | "courses" | "articles"
   | "gallery" | "reviews" | "advertisements" | "finances"
-  | "admins" | "settings" | "contactInfo" | "siteTexts";
+  | "admins" | "settings" | "contactInfo" | "siteTexts" | "paymentMethods";
 
 const PERMISSION_MAP: Record<AdminSection, string> = {
   dashboard: "dashboard",
@@ -30,6 +30,7 @@ const PERMISSION_MAP: Record<AdminSection, string> = {
   admins: "admins",
   contactInfo: "settings",
   siteTexts: "settings",
+  paymentMethods: "settings",
   settings: "settings",
 };
 
@@ -95,6 +96,7 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
         { id: "admins" as AdminSection, label: lang === "uz" ? "Adminlar" : lang === "ru" ? "\u0410\u0434\u043c\u0438\u043d\u044b" : "Admins", icon: Shield },
         { id: "contactInfo" as AdminSection, label: lang === "uz" ? "Raqamlar & Havolalar" : lang === "ru" ? "Номера & Ссылки" : "Contacts & Links", icon: Phone },
         { id: "siteTexts" as AdminSection, label: lang === "uz" ? "Sayt matnlari" : lang === "ru" ? "Тексты сайта" : "Site Texts", icon: Type, superAdminOnly: true },
+        { id: "paymentMethods" as AdminSection, label: lang === "uz" ? "To'lov usullari" : lang === "ru" ? "Способы оплаты" : "Payment Methods", icon: CreditCard, superAdminOnly: true },
         { id: "settings" as AdminSection, label: lang === "uz" ? "Sozlamalar" : lang === "ru" ? "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438" : "Settings", icon: Settings },
       ],
     },
