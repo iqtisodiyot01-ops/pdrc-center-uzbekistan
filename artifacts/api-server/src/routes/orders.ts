@@ -61,13 +61,19 @@ router.post("/orders", requireAuth, async (req, res) => {
   res.status(201).json(order);
 });
 
+const ALLOWED_PAYMENT_METHODS = ["payme", "click", "uzumbank", "paynet", "visaCard", "uzcardCard", "pending"] as const;
+
 router.patch("/orders/:id/payment-method", requireAuth, async (req, res) => {
   const orderId = parseInt(req.params.id);
+  if (isNaN(orderId)) {
+    res.status(400).json({ error: "Bad request", message: "Invalid order ID" });
+    return;
+  }
   const userId = req.user!.userId;
   const { paymentMethod } = req.body as { paymentMethod: string };
 
-  if (!paymentMethod) {
-    res.status(400).json({ error: "Bad request", message: "paymentMethod required" });
+  if (!paymentMethod || !ALLOWED_PAYMENT_METHODS.includes(paymentMethod as (typeof ALLOWED_PAYMENT_METHODS)[number])) {
+    res.status(400).json({ error: "Bad request", message: `paymentMethod must be one of: ${ALLOWED_PAYMENT_METHODS.join(", ")}` });
     return;
   }
 
