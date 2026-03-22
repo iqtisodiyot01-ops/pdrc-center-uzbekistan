@@ -85,7 +85,7 @@ router.get("/admin/orders/:id", requireAdmin, async (req, res) => {
 router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { status } = req.body as { status: string };
-  const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
+  const validStatuses = ["pending", "confirmed", "preparing", "shipped", "delivered"];
   if (!status || !validStatuses.includes(status)) {
     res.status(400).json({ error: "Invalid status", validStatuses });
     return;

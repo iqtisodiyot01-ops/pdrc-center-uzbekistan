@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, productOrdersTable, cartItemsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
+import { sendOrderNotification } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,16 @@ router.post("/orders", requireAuth, async (req, res) => {
     .returning();
 
   await db.delete(cartItemsTable).where(eq(cartItemsTable.userId, userId));
+
+  sendOrderNotification({
+    orderId: order.id,
+    fullName,
+    phone,
+    deliveryAddress,
+    paymentMethod,
+    total: total || 0,
+    items,
+  }).catch((err) => console.error("Telegram notification failed:", err));
 
   res.status(201).json(order);
 });

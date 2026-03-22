@@ -1,0 +1,68 @@
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+interface OrderNotification {
+  orderId: number;
+  fullName: string;
+  phone: string;
+  deliveryAddress: string;
+  paymentMethod: string;
+  total: number;
+  items: { productName: string; price: number; quantity: number }[];
+}
+
+export async function sendOrderNotification(order: OrderNotification): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn("Telegram credentials not configured, skipping notification");
+    return;
+  }
+
+  const itemLines = order.items
+    .map((item) => `  • ${item.productName} × ${item.quantity} = ${(item.price * item.quantity).toLocaleString()} so'm`)
+    .join("\n");
+
+  const paymentLabels: Record<string, string> = {
+    cash: "Naqd pul",
+    payme: "Payme",
+    click: "Click",
+    card: "Bank o'tkazmasi",
+  };
+
+  const text = [
+    `🛒 *Yangi buyurtma \\#${order.orderId}*`,
+    ``,
+    `👤 *Mijoz:* ${escapeMarkdown(order.fullName)}`,
+    `📞 *Telefon:* ${escapeMarkdown(order.phone)}`,
+    `📍 *Manzil:* ${escapeMarkdown(order.deliveryAddress)}`,
+    `💳 *To'lov:* ${escapeMarkdown(paymentLabels[order.paymentMethod] || order.paymentMethod)}`,
+    ``,
+    `📦 *Mahsulotlar:*`,
+    escapeMarkdown(itemLines),
+    ``,
+    `💰 *Jami:* ${order.total.toLocaleString()} so'm`,
+  ].join("\n");
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        text,
+        parse_mode: "MarkdownV2",
+      }),
+    });
+
+    if (!resp.ok) {
+      const errorBody = await resp.text();
+      console.error("Telegram API error:", resp.status, errorBody);
+    }
+  } catch (err) {
+    console.error("Failed to send Telegram notification:", err);
+  }
+}
+
+function escapeMarkdown(text: string): string {
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
+}
