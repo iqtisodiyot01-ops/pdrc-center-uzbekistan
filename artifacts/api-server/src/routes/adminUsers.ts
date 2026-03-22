@@ -1,12 +1,12 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAdmin, requireSuperAdmin } from "../middlewares/auth";
+import { requireSuperAdmin, requireAdminPermission } from "../middlewares/auth";
 import bcrypt from "bcryptjs";
 
 const router: IRouter = Router();
 
-router.get("/admin/users", requireAdmin, async (_req, res) => {
+router.get("/admin/users", requireAdminPermission("admins"), async (_req, res) => {
   const users = await db
     .select({
       id: usersTable.id,
@@ -38,6 +38,11 @@ router.post("/admin/users", requireSuperAdmin, async (req, res) => {
     return;
   }
 
+  if (role === "superadmin") {
+    res.status(403).json({ error: "Cannot create superadmin users" });
+    return;
+  }
+
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
     res.status(409).json({ error: "Email already registered" });
@@ -61,7 +66,7 @@ router.post("/admin/users", requireSuperAdmin, async (req, res) => {
   res.status(201).json(user);
 });
 
-router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
+router.patch("/admin/users/:id", requireSuperAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
   const { role, permissions, isActive, name, phone } = req.body as {
     role?: string;
@@ -70,6 +75,27 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
     name?: string;
     phone?: string;
   };
+
+  if (id === req.user!.userId) {
+    res.status(403).json({ error: "Cannot modify your own account" });
+    return;
+  }
+
+  const [target] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!target) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  if (target.role === "superadmin") {
+    res.status(403).json({ error: "Cannot modify another superadmin" });
+    return;
+  }
+
+  if (role === "superadmin") {
+    res.status(403).json({ error: "Cannot promote to superadmin" });
+    return;
+  }
 
   const updateData: Partial<typeof usersTable.$inferInsert> = {};
   if (role !== undefined) updateData.role = role;
@@ -101,8 +127,24 @@ router.patch("/admin/users/:id", requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
-router.delete("/admin/users/:id", requireAdmin, async (req, res) => {
+router.delete("/admin/users/:id", requireSuperAdmin, async (req, res) => {
   const id = parseInt(req.params.id);
+
+  if (id === req.user!.userId) {
+    res.status(403).json({ error: "Cannot deactivate your own account" });
+    return;
+  }
+
+  const [target] = await db.select({ role: usersTable.role }).from(usersTable).where(eq(usersTable.id, id)).limit(1);
+  if (!target) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (target.role === "superadmin") {
+    res.status(403).json({ error: "Cannot deactivate a superadmin" });
+    return;
+  }
+
   const [updated] = await db
     .update(usersTable)
     .set({ isActive: false, updatedAt: new Date() })

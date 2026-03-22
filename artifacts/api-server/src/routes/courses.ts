@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { coursesTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 import { CreateCourseBody, UpdateCourseBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -29,7 +29,7 @@ router.get("/courses/:id", async (req, res) => {
   res.json(course);
 });
 
-router.post("/courses", requireAdmin, async (req, res) => {
+router.post("/courses", requireAdminPermission("courses"), async (req, res) => {
   const parsed = CreateCourseBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -39,7 +39,7 @@ router.post("/courses", requireAdmin, async (req, res) => {
   res.status(201).json(course);
 });
 
-router.put("/courses/:id", requireAdmin, async (req, res) => {
+router.put("/courses/:id", requireAdminPermission("courses"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });
@@ -62,7 +62,7 @@ router.put("/courses/:id", requireAdmin, async (req, res) => {
   res.json(course);
 });
 
-router.delete("/courses/:id", requireAdmin, async (req, res) => {
+router.delete("/courses/:id", requireAdminPermission("courses"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });

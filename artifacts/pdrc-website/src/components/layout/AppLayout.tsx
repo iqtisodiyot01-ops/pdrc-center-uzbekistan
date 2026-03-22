@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
-import { useAppStore } from "@/store/use-store";
-import { useGetCurrentUser, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
+import { useAppStore, type AppUser } from "@/store/use-store";
+import { api } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { CartDrawer } from "@/components/CartDrawer";
 
@@ -11,15 +12,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { token, setUser, user, cartOpen, setCartOpen } = useAppStore();
 
-  const { data: userData, isLoading, isError } = useGetCurrentUser({
-    query: {
-      enabled: !!token,
-      retry: false,
-      queryKey: getGetCurrentUserQueryKey()
-    },
-    request: {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined
-    }
+  const { data: userData, isLoading, isError } = useQuery<AppUser>({
+    queryKey: ["current-user"],
+    queryFn: () => api.get<AppUser>("/auth/me"),
+    enabled: !!token,
+    retry: false,
   });
 
   const PUBLIC_ROUTES = ["/login", "/register", "/about", "/delivery", "/payment/success", "/payment/cancel"];
@@ -55,6 +52,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!token && !isPublic) return null;
+
+  if (location === "/admin") {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 pt-16">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-[#0a1628] h-16 flex items-center px-4 shadow-lg">
+          <a href="/" className="text-white font-bold text-sm uppercase tracking-wider hover:text-blue-300 transition-colors">
+            PDR Center Uzbekistan
+          </a>
+        </div>
+        <main className="flex-1">
+          {children}
+        </main>
+        <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 pt-[128px] md:pt-[152px]">

@@ -68,7 +68,7 @@ export function Navbar() {
     { href: "/gallery", label: lang === "uz" ? "Galereya" : lang === "ru" ? "Галерея" : "Gallery" },
   ];
 
-  if (user?.role === "admin") {
+  if (user?.role === "admin" || user?.role === "superadmin") {
     catalogNavItems.push({ href: "/admin", label: lang === "uz" ? "Admin" : "Admin" });
   }
 
@@ -83,7 +83,7 @@ export function Navbar() {
     { href: "/contact", icon: Handshake, label: lang === "uz" ? "Sheriklik" : lang === "ru" ? "Партнёрство" : "Partnership" },
     { href: "/contact", icon: User, label: lang === "uz" ? "Aloqa" : lang === "ru" ? "Контакты" : "Contacts" },
     ...(user ? [{ href: "/profile", icon: User, label: lang === "uz" ? "Profilim" : lang === "ru" ? "Мой профиль" : "My profile" }] : []),
-    ...(user?.role === "admin" ? [{ href: "/admin", icon: User, label: "Admin" }] : []),
+    ...((user?.role === "admin" || user?.role === "superadmin") ? [{ href: "/admin", icon: User, label: "Admin" }] : []),
   ];
 
   return (

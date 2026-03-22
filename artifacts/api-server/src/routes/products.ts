@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { productsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 import { CreateProductBody, UpdateProductBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -33,7 +33,7 @@ router.get("/products/:id", async (req, res) => {
   res.json(product);
 });
 
-router.post("/products", requireAdmin, async (req, res) => {
+router.post("/products", requireAdminPermission("products"), async (req, res) => {
   const parsed = CreateProductBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -43,7 +43,7 @@ router.post("/products", requireAdmin, async (req, res) => {
   res.status(201).json(product);
 });
 
-router.put("/products/:id", requireAdmin, async (req, res) => {
+router.put("/products/:id", requireAdminPermission("products"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });
@@ -66,7 +66,7 @@ router.put("/products/:id", requireAdmin, async (req, res) => {
   res.json(product);
 });
 
-router.delete("/products/:id", requireAdmin, async (req, res) => {
+router.delete("/products/:id", requireAdminPermission("products"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });

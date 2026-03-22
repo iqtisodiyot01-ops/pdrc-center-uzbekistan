@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { articlesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 import { CreateArticleBody, UpdateArticleBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -29,7 +29,7 @@ router.get("/articles/:id", async (req, res) => {
     res.json(article);
 });
 
-router.post("/articles", requireAdmin, async (req, res) => {
+router.post("/articles", requireAdminPermission("articles"), async (req, res) => {
     const parsed = CreateArticleBody.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -39,7 +39,7 @@ router.post("/articles", requireAdmin, async (req, res) => {
     res.status(201).json(article);
 });
 
-router.put("/articles/:id", requireAdmin, async (req, res) => {
+router.put("/articles/:id", requireAdminPermission("articles"), async (req, res) => {
     const id = parseInt(req.params["id"] as string);
     if (isNaN(id)) {
         res.status(400).json({ error: "Bad request", message: "Invalid ID" });
@@ -62,7 +62,7 @@ router.put("/articles/:id", requireAdmin, async (req, res) => {
     res.json(article);
 });
 
-router.delete("/articles/:id", requireAdmin, async (req, res) => {
+router.delete("/articles/:id", requireAdminPermission("articles"), async (req, res) => {
     const id = parseInt(req.params["id"] as string);
     if (isNaN(id)) {
         res.status(400).json({ error: "Bad request", message: "Invalid ID" });

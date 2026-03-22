@@ -10,3 +10,6 @@ export * from "./wishlist";
 export * from "./orders";
 export * from "./siteSettings";
 export * from "./articles";
+export * from "./advertisements";
+export * from "./finances";
+export * from "./contactMessages";

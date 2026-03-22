@@ -1,16 +1,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { UserProfile } from "@workspace/api-client-react";
 
 export type Language = "uz" | "en" | "ru";
+
+export interface AppUser {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  permissions?: Record<string, boolean> | null;
+  createdAt?: string;
+}
 
 interface AppState {
   lang: Language;
   setLang: (lang: Language) => void;
   token: string | null;
   setToken: (token: string | null) => void;
-  user: UserProfile | null;
-  setUser: (user: UserProfile | null) => void;
+  user: AppUser | null;
+  setUser: (user: AppUser | null) => void;
   logout: () => void;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;

@@ -65,6 +65,11 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
+  if (!user.isActive) {
+    res.status(403).json({ error: "Forbidden", message: "Account is deactivated" });
+    return;
+  }
+
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
   res.json({
@@ -75,6 +80,7 @@ router.post("/auth/login", async (req, res) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      permissions: user.permissions,
       createdAt: user.createdAt,
     },
   });
@@ -98,6 +104,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     email: user.email,
     phone: user.phone,
     role: user.role,
+    permissions: user.permissions,
     createdAt: user.createdAt,
   });
 });

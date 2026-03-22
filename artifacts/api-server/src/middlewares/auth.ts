@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const rawSecret = process.env.JWT_SECRET;
 if (!rawSecret) {
@@ -20,6 +22,12 @@ declare global {
   namespace Express {
     interface Request {
       user?: AuthPayload;
+      dbUser?: {
+        id: number;
+        role: string;
+        isActive: boolean;
+        permissions: Record<string, boolean> | null;
+      };
     }
   }
 }
@@ -41,25 +49,70 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+async function loadAndValidateAdmin(req: Request, res: Response): Promise<boolean> {
+  const [user] = await db
+    .select({
+      id: usersTable.id,
+      role: usersTable.role,
+      isActive: usersTable.isActive,
+      permissions: usersTable.permissions,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.user!.userId))
+    .limit(1);
+
+  if (!user || !user.isActive) {
+    res.status(403).json({ error: "Forbidden", message: "Account is deactivated" });
+    return false;
+  }
+
+  if (user.role !== "admin" && user.role !== "superadmin") {
+    res.status(403).json({ error: "Forbidden", message: "Admin access required" });
+    return false;
+  }
+
+  req.dbUser = user;
+  return true;
+}
+
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  requireAuth(req, res, () => {
-    const role = req.user?.role;
-    if (role !== "admin" && role !== "superadmin") {
-      res.status(403).json({ error: "Forbidden", message: "Admin access required" });
+  requireAuth(req, res, async () => {
+    const valid = await loadAndValidateAdmin(req, res);
+    if (valid) next();
+  });
+}
+
+export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
+  requireAuth(req, res, async () => {
+    const valid = await loadAndValidateAdmin(req, res);
+    if (!valid) return;
+    if (req.dbUser!.role !== "superadmin") {
+      res.status(403).json({ error: "Forbidden", message: "Super-admin access required" });
       return;
     }
     next();
   });
 }
 
-export function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
-  requireAuth(req, res, () => {
-    if (req.user?.role !== "superadmin") {
-      res.status(403).json({ error: "Forbidden", message: "Super-admin access required" });
-      return;
-    }
-    next();
-  });
+export function requireAdminPermission(permission: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    requireAuth(req, res, async () => {
+      const valid = await loadAndValidateAdmin(req, res);
+      if (!valid) return;
+
+      if (req.dbUser!.role === "superadmin") {
+        next();
+        return;
+      }
+
+      const perms = req.dbUser!.permissions;
+      if (!perms || !perms[permission]) {
+        res.status(403).json({ error: "Forbidden", message: `Permission '${permission}' required` });
+        return;
+      }
+      next();
+    });
+  };
 }
 
 export function signToken(payload: AuthPayload): string {

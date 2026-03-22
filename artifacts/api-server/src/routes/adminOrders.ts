@@ -1,11 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, productOrdersTable, usersTable } from "@workspace/db";
 import { eq, desc, and, sql } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-router.get("/admin/orders", requireAdmin, async (req, res) => {
+router.get("/admin/orders", requireAdminPermission("orders"), async (req, res) => {
   const { status, page = "1", limit = "20" } = req.query as Record<string, string>;
   const pageNum = Math.max(1, parseInt(page));
   const pageSize = Math.min(100, parseInt(limit));
@@ -51,7 +51,7 @@ router.get("/admin/orders", requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/orders/:id", requireAdmin, async (req, res) => {
+router.get("/admin/orders/:id", requireAdminPermission("orders"), async (req, res) => {
   const id = parseInt(req.params.id);
   const [order] = await db
     .select({
@@ -82,7 +82,7 @@ router.get("/admin/orders/:id", requireAdmin, async (req, res) => {
   res.json(order);
 });
 
-router.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
+router.patch("/admin/orders/:id/status", requireAdminPermission("orders"), async (req, res) => {
   const id = parseInt(req.params.id);
   const { status } = req.body as { status: string };
   const validStatuses = ["pending", "confirmed", "preparing", "shipped", "delivered"];

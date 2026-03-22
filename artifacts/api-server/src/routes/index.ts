@@ -16,6 +16,9 @@ import adminUsersRouter from "./adminUsers";
 import adminStatsRouter from "./adminStats";
 import siteSettingsRouter from "./siteSettings";
 import articlesRouter from "./articles";
+import advertisementsRouter from "./advertisements";
+import financesRouter from "./finances";
+import contactMessagesRouter from "./contactMessages";
 
 const router: IRouter = Router();
 
@@ -36,5 +39,8 @@ router.use(adminUsersRouter);
 router.use(adminStatsRouter);
 router.use(siteSettingsRouter);
 router.use(articlesRouter);
+router.use(advertisementsRouter);
+router.use(financesRouter);
+router.use(contactMessagesRouter);
 
 export default router;

@@ -1,46 +1,97 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, productOrdersTable, bookingsTable, productsTable, servicesTable, coursesTable } from "@workspace/db";
+import { db, usersTable, productOrdersTable, bookingsTable, productsTable, servicesTable, coursesTable, contactMessagesTable, advertisementsTable, financialTransactionsTable, galleryTable, reviewsTable, articlesTable } from "@workspace/db";
 import { sql, eq } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-router.get("/admin/stats", requireAdmin, async (_req, res) => {
+router.get("/admin/stats", requireAdminPermission("dashboard"), async (_req, res) => {
   const [
     totalOrders,
     revenue,
     pendingOrders,
+    confirmedOrders,
+    preparingOrders,
+    shippedOrders,
+    deliveredOrders,
     newBookings,
     totalProducts,
+    inStockProducts,
+    outOfStockProducts,
     totalServices,
     totalCourses,
     totalUsers,
+    totalAdmins,
+    totalArticles,
+    totalGallery,
+    totalReviews,
+    unreadMessages,
+    activeAds,
+    totalIncome,
+    totalExpense,
     recentOrders,
     recentBookings,
+    recentMessages,
+    todayOrders,
+    thisMonthRevenue,
   ] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(productOrdersTable),
     db.select({ sum: sql<number>`coalesce(sum(total), 0)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "delivered")),
     db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "pending")),
+    db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "confirmed")),
+    db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "preparing")),
+    db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "shipped")),
+    db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "delivered")),
     db.select({ count: sql<number>`count(*)` }).from(bookingsTable).where(eq(bookingsTable.status, "new")),
     db.select({ count: sql<number>`count(*)` }).from(productsTable),
+    db.select({ count: sql<number>`count(*)` }).from(productsTable).where(eq(productsTable.inStock, true)),
+    db.select({ count: sql<number>`count(*)` }).from(productsTable).where(eq(productsTable.inStock, false)),
     db.select({ count: sql<number>`count(*)` }).from(servicesTable),
     db.select({ count: sql<number>`count(*)` }).from(coursesTable),
     db.select({ count: sql<number>`count(*)` }).from(usersTable),
+    db.select({ count: sql<number>`count(*)` }).from(usersTable).where(sql`role IN ('admin', 'superadmin')`),
+    db.select({ count: sql<number>`count(*)` }).from(articlesTable),
+    db.select({ count: sql<number>`count(*)` }).from(galleryTable),
+    db.select({ count: sql<number>`count(*)` }).from(reviewsTable),
+    db.select({ count: sql<number>`count(*)` }).from(contactMessagesTable).where(eq(contactMessagesTable.isRead, false)),
+    db.select({ count: sql<number>`count(*)` }).from(advertisementsTable).where(eq(advertisementsTable.isActive, true)),
+    db.select({ sum: sql<number>`coalesce(sum(amount), 0)` }).from(financialTransactionsTable).where(eq(financialTransactionsTable.type, "income")),
+    db.select({ sum: sql<number>`coalesce(sum(amount), 0)` }).from(financialTransactionsTable).where(eq(financialTransactionsTable.type, "expense")),
     db.select().from(productOrdersTable).orderBy(sql`created_at desc`).limit(5),
     db.select().from(bookingsTable).orderBy(sql`created_at desc`).limit(5),
+    db.select().from(contactMessagesTable).orderBy(sql`created_at desc`).limit(5),
+    db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(sql`created_at >= current_date`),
+    db.select({ sum: sql<number>`coalesce(sum(total), 0)` }).from(productOrdersTable).where(sql`created_at >= date_trunc('month', current_date) AND status = 'delivered'`),
   ]);
 
   res.json({
     totalOrders: Number(totalOrders[0]?.count ?? 0),
     revenue: Number(revenue[0]?.sum ?? 0),
     pendingOrders: Number(pendingOrders[0]?.count ?? 0),
+    confirmedOrders: Number(confirmedOrders[0]?.count ?? 0),
+    preparingOrders: Number(preparingOrders[0]?.count ?? 0),
+    shippedOrders: Number(shippedOrders[0]?.count ?? 0),
+    deliveredOrders: Number(deliveredOrders[0]?.count ?? 0),
     newBookings: Number(newBookings[0]?.count ?? 0),
     totalProducts: Number(totalProducts[0]?.count ?? 0),
+    inStockProducts: Number(inStockProducts[0]?.count ?? 0),
+    outOfStockProducts: Number(outOfStockProducts[0]?.count ?? 0),
     totalServices: Number(totalServices[0]?.count ?? 0),
     totalCourses: Number(totalCourses[0]?.count ?? 0),
     totalUsers: Number(totalUsers[0]?.count ?? 0),
+    totalAdmins: Number(totalAdmins[0]?.count ?? 0),
+    totalArticles: Number(totalArticles[0]?.count ?? 0),
+    totalGallery: Number(totalGallery[0]?.count ?? 0),
+    totalReviews: Number(totalReviews[0]?.count ?? 0),
+    unreadMessages: Number(unreadMessages[0]?.count ?? 0),
+    activeAds: Number(activeAds[0]?.count ?? 0),
+    totalIncome: Number(totalIncome[0]?.sum ?? 0),
+    totalExpense: Number(totalExpense[0]?.sum ?? 0),
+    todayOrders: Number(todayOrders[0]?.count ?? 0),
+    thisMonthRevenue: Number(thisMonthRevenue[0]?.sum ?? 0),
     recentOrders,
     recentBookings,
+    recentMessages,
   });
 });
 

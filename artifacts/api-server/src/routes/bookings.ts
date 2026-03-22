@@ -2,12 +2,12 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { bookingsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 import { CreateBookingBody, UpdateBookingStatusBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
-router.get("/bookings", requireAdmin, async (_req, res) => {
+router.get("/bookings", requireAdminPermission("bookings"), async (_req, res) => {
   const bookings = await db
     .select()
     .from(bookingsTable)
@@ -25,7 +25,7 @@ router.post("/bookings", async (req, res) => {
   res.status(201).json(booking);
 });
 
-router.get("/bookings/:id", requireAdmin, async (req, res) => {
+router.get("/bookings/:id", requireAdminPermission("bookings"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) {
@@ -35,7 +35,7 @@ router.get("/bookings/:id", requireAdmin, async (req, res) => {
   res.json(booking);
 });
 
-router.delete("/bookings/:id", requireAdmin, async (req, res) => {
+router.delete("/bookings/:id", requireAdminPermission("bookings"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id));
   if (!booking) {
@@ -46,7 +46,7 @@ router.delete("/bookings/:id", requireAdmin, async (req, res) => {
   res.json({ success: true, message: "Booking deleted" });
 });
 
-router.put("/bookings/:id/status", requireAdmin, async (req, res) => {
+router.put("/bookings/:id/status", requireAdminPermission("bookings"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const parsed = UpdateBookingStatusBody.safeParse(req.body);
   if (!parsed.success) {

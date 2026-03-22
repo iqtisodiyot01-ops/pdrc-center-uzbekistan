@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { galleryTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdminPermission } from "../middlewares/auth";
 import { CreateGalleryItemBody, UpdateGalleryItemBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -19,7 +19,7 @@ router.get("/gallery", async (req, res) => {
   res.json(filtered);
 });
 
-router.post("/gallery", requireAdmin, async (req, res) => {
+router.post("/gallery", requireAdminPermission("gallery"), async (req, res) => {
   const parsed = CreateGalleryItemBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Validation error", message: parsed.error.message });
@@ -43,7 +43,7 @@ router.get("/gallery/:id", async (req, res) => {
   res.json(item);
 });
 
-router.put("/gallery/:id", requireAdmin, async (req, res) => {
+router.put("/gallery/:id", requireAdminPermission("gallery"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });
@@ -66,7 +66,7 @@ router.put("/gallery/:id", requireAdmin, async (req, res) => {
   res.json(item);
 });
 
-router.delete("/gallery/:id", requireAdmin, async (req, res) => {
+router.delete("/gallery/:id", requireAdminPermission("gallery"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   if (isNaN(id)) {
     res.status(400).json({ error: "Bad request", message: "Invalid ID" });
