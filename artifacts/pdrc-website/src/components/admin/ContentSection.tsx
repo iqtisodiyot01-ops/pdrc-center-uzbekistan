@@ -47,13 +47,13 @@ export function ContentSection({ title, apiPath, queryKey, fields, displayFn, de
   const createItem = useMutation({
     mutationFn: (data: Record<string, unknown>) => api.post(`/${apiPath}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [queryKey] }); resetForm(); toast({ title: lang === "uz" ? "Qo'shildi" : "Created" }); },
-    onError: () => toast({ variant: "destructive", title: "Error" }),
+    onError: (err: unknown) => toast({ variant: "destructive", title: lang === "uz" ? "Xato" : "Error", description: err instanceof Error ? err.message : String(err) }),
   });
 
   const updateItem = useMutation({
     mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) => api.put(`/${apiPath}/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [queryKey] }); resetForm(); toast({ title: lang === "uz" ? "Yangilandi" : "Updated" }); },
-    onError: () => toast({ variant: "destructive", title: "Error" }),
+    onError: (err: unknown) => toast({ variant: "destructive", title: lang === "uz" ? "Xato" : "Error", description: err instanceof Error ? err.message : String(err) }),
   });
 
   const deleteItem = useMutation({
