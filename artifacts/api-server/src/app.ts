@@ -9,13 +9,14 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+const PROD_ORIGINS = [
+  process.env.APP_URL || "https://pdrcenteruzbekistan.com",
+  "https://pdrcenteruzbekistan.com",
+];
+
 const allowedOrigins = process.env.NODE_ENV === "production"
-  ? [process.env.APP_URL || "https://pdrcenteruzbekistan.com"]
-  : [
-      "http://localhost:18940",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ];
+  ? PROD_ORIGINS
+  : null; // null = allow all in dev
 
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -52,7 +53,9 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (allowedOrigins === null) {
+        callback(null, true);
+      } else if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: ${origin} ruxsat etilmagan`));
