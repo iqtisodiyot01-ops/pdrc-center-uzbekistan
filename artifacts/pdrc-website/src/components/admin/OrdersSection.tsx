@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAppStore } from "@/store/use-store";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Clock, CheckCircle2, Box, Truck, MapPin, ChevronDown, Loader2 } from "lucide-react";
+import { Package, Clock, CheckCircle2, Box, Truck, MapPin, ChevronDown, Loader2, FileDown } from "lucide-react";
 
 const ORDER_STATUSES = ["pending", "confirmed", "preparing", "shipped", "delivered"] as const;
 
@@ -48,11 +48,28 @@ export function OrdersSection() {
     onError: () => toast({ variant: "destructive", title: "Error" }),
   });
 
+  const { token } = useAppStore();
+
+  const handleExport = async () => {
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8080";
+    const res = await fetch(`${apiBase}/api/admin/export/orders`, { headers: { Authorization: `Bearer ${token}` } });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `orders_${Date.now()}.xlsx`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">
-        {lang === "uz" ? "Buyurtmalar" : lang === "ru" ? "\u0417\u0430\u043a\u0430\u0437\u044b" : "Orders"}
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {lang === "uz" ? "Buyurtmalar" : lang === "ru" ? "\u0417\u0430\u043a\u0430\u0437\u044b" : "Orders"}
+        </h1>
+        <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700">
+          <FileDown size={16} />{lang === "uz" ? "Excel yuklab olish" : lang === "ru" ? "Скачать Excel" : "Export Excel"}
+        </button>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         <button onClick={() => { setStatusFilter(""); setPage(1); }} className={`p-3 rounded-xl border text-center transition-all bg-gray-100 text-gray-700 border-gray-200 ${statusFilter === "" ? "ring-2 ring-blue-500 shadow-md" : "hover:shadow-sm"}`}>

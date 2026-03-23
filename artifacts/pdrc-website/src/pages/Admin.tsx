@@ -18,6 +18,9 @@ import { ContactInfoSection } from "@/components/admin/ContactInfoSection";
 import { SiteTextsSection } from "@/components/admin/SiteTextsSection";
 import { PaymentMethodsSection } from "@/components/admin/PaymentMethodsSection";
 import DeliverySection from "@/components/admin/DeliverySection";
+import { PromoCodesSection } from "@/components/admin/PromoCodesSection";
+import { ProductsSection } from "@/components/admin/ProductsSection";
+import { useAdminWS } from "@/hooks/useAdminWS";
 
 function PermissionDenied() {
   const { lang } = useAppStore();
@@ -39,8 +42,9 @@ function PermissionDenied() {
 }
 
 export default function Admin() {
-  const { user, lang } = useAppStore();
+  const { user, lang, token } = useAppStore();
   const [activeSection, setActiveSection] = useState<AdminSection>("dashboard");
+  useAdminWS(!!user && (user.role === "admin" || user.role === "superadmin"));
 
   const { data: unreadData } = useQuery<{ count: number }>({
     queryKey: ["admin-unread-messages"],
@@ -93,44 +97,7 @@ export default function Admin() {
       case "categories":
         return <CategoriesSection />;
       case "products":
-        return (
-          <ContentSection
-            title={lang === "uz" ? "Mahsulotlar" : "Products"}
-            apiPath="products"
-            queryKey="products"
-            defaultValues={{ inStock: true, stock: 0 }}
-            fields={[
-              { key: "nameUz", label: "Nomi (UZ)", type: "text", required: true },
-              { key: "nameEn", label: "Name (EN)", type: "text", required: true },
-              { key: "nameRu", label: "Название (RU)", type: "text", required: true },
-              { key: "descriptionUz", label: "Tavsif (UZ)", type: "textarea", required: true },
-              { key: "descriptionEn", label: "Description (EN)", type: "textarea", required: true },
-              { key: "descriptionRu", label: "Описание (RU)", type: "textarea", required: true },
-              { key: "price", label: lang === "uz" ? "Narxi (UZS)" : "Price (UZS)", type: "number", required: true },
-              { key: "discountPrice", label: lang === "uz" ? "Chegirma narxi (UZS)" : "Discount Price (UZS)", type: "number" },
-              { key: "stock", label: lang === "uz" ? "Ombordagi miqdor" : "Stock Quantity", type: "number" },
-              {
-                key: "category",
-                label: lang === "uz" ? "Kategoriya" : "Category",
-                type: adminCategories.length > 0 ? "select" : "text",
-                required: true,
-                options: adminCategories.map((c) => c.nameUz),
-                placeholder: lang === "uz" ? "Kategoriyani tanlang" : "Select category",
-              },
-              { key: "imageUrl", label: lang === "uz" ? "Rasm" : "Image", type: "image" },
-              { key: "inStock", label: lang === "uz" ? "Mavjud" : "In Stock", type: "checkbox" },
-            ]}
-            displayFn={(item, l) => ({
-              title: String(l === "uz" ? item.nameUz : l === "ru" ? item.nameRu : item.nameEn),
-              subtitle: String(l === "uz" ? item.nameEn : item.nameUz) + " / " + String(item.nameRu),
-              meta: item.discountPrice
-                ? `${Number(item.discountPrice).toLocaleString()} UZS (${Number(item.price).toLocaleString()})`
-                : `${Number(item.price).toLocaleString()} UZS`,
-              badge: String(item.category),
-              image: item.imageUrl ? String(item.imageUrl) : undefined,
-            })}
-          />
-        );
+        return <ProductsSection lang={lang} token={token} categories={adminCategories} />;
       case "services":
         return (
           <ContentSection
@@ -266,6 +233,8 @@ export default function Admin() {
       case "paymentMethods":
         if (user?.role !== "superadmin") return <PermissionDenied />;
         return <PaymentMethodsSection />;
+      case "promoCodes":
+        return <PromoCodesSection />;
       case "settings":
         return <SettingsSection />;
       default:

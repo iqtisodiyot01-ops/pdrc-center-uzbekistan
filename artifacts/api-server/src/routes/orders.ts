@@ -3,6 +3,7 @@ import { db, productOrdersTable, cartItemsTable, productsTable, financialTransac
 import { eq, desc, inArray, and, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { sendOrderNotification } from "../lib/telegram";
+import { broadcast } from "../lib/ws";
 
 const router: IRouter = Router();
 
@@ -120,6 +121,7 @@ router.post("/orders", requireAuth, async (req, res) => {
       items: validatedItems,
     }).catch((err) => console.error("Telegram notification failed:", err));
 
+    broadcast({ type: "new_order", payload: { id: order.id, total: order.total, fullName, status: "pending", createdAt: order.createdAt } });
     res.status(201).json(order);
   } catch (err: any) {
     const isStockError = err.message?.includes("omborda");

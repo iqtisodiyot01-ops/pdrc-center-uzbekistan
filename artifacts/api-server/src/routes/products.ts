@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { productsTable } from "@workspace/db";
-import { eq, asc, and, or, ilike, sql } from "drizzle-orm";
+import { eq, asc, and, or, ilike, sql, inArray } from "drizzle-orm";
 import { requireAdminPermission } from "../middlewares/auth";
 import { CreateProductBody, UpdateProductBody } from "@workspace/api-zod";
 
@@ -105,6 +105,44 @@ router.delete("/products/:id", requireAdminPermission("products"), async (req, r
   }
   await db.delete(productsTable).where(eq(productsTable.id, id));
   res.json({ success: true, message: "Product deleted" });
+});
+
+router.post("/products/bulk", requireAdminPermission("products"), async (req, res) => {
+  const { ids, action, value } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "ids array required" });
+    return;
+  }
+  const numIds = ids.map(Number).filter((n) => !isNaN(n));
+  if (numIds.length === 0) {
+    res.status(400).json({ error: "Invalid IDs" });
+    return;
+  }
+  switch (action) {
+    case "activate":
+      await db.update(productsTable).set({ inStock: true }).where(inArray(productsTable.id, numIds));
+      break;
+    case "deactivate":
+      await db.update(productsTable).set({ inStock: false }).where(inArray(productsTable.id, numIds));
+      break;
+    case "delete":
+      await db.delete(productsTable).where(inArray(productsTable.id, numIds));
+      break;
+    case "set_price":
+      if (!value || isNaN(Number(value))) {
+        res.status(400).json({ error: "value required for set_price" });
+        return;
+      }
+      await db.update(productsTable).set({ price: Number(value) }).where(inArray(productsTable.id, numIds));
+      break;
+    case "set_discount":
+      await db.update(productsTable).set({ discountPrice: value ? Number(value) : null }).where(inArray(productsTable.id, numIds));
+      break;
+    default:
+      res.status(400).json({ error: "Unknown action" });
+      return;
+  }
+  res.json({ ok: true, affected: numIds.length });
 });
 
 export default router;

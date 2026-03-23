@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, contactMessagesTable, usersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdminPermission, requireAuth } from "../middlewares/auth";
+import { broadcast } from "../lib/ws";
 
 const router: IRouter = Router();
 
@@ -15,6 +16,7 @@ router.post("/contact-messages", async (req, res) => {
     .insert(contactMessagesTable)
     .values({ name, email, phone, subject, message })
     .returning();
+  broadcast({ type: "new_message", payload: { id: msg.id, name, subject: subject ?? "", createdAt: msg.createdAt } });
   res.status(201).json(msg);
 });
 

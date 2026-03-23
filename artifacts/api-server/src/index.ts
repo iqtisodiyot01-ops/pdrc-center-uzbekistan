@@ -1,5 +1,7 @@
+import http from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initWebSocket } from "./lib/ws";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +25,9 @@ process.on("uncaughtException", (err) => {
   process.exit(1);
 });
 
-app.listen(port, () => {
+const server = http.createServer(app);
+initWebSocket(server);
+
+server.listen(port, () => {
   logger.info({ port }, "Server listening");
 });

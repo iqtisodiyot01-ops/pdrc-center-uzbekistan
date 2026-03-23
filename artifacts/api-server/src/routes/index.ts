@@ -22,6 +22,8 @@ import contactMessagesRouter from "./contactMessages";
 import uploadRouter from "./upload";
 import categoriesRouter from "./categories";
 import deliveryRouter from "./delivery";
+import promoCodesRouter from "./promoCodes";
+import exportRouter from "./export";
 
 const router: IRouter = Router();
 
@@ -48,5 +50,7 @@ router.use(contactMessagesRouter);
 router.use(uploadRouter);
 router.use(categoriesRouter);
 router.use(deliveryRouter);
+router.use(promoCodesRouter);
+router.use(exportRouter);
 
 export default router;

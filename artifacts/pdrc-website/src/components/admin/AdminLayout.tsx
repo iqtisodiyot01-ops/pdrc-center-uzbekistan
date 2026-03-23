@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Package, MessageSquare, Wrench, ShoppingCart,
   GraduationCap, FileText, Users, Image, Star, Megaphone,
   DollarSign, Settings, ChevronLeft, ChevronRight, Menu, LogOut, Shield,
-  Calendar, Tag, Phone, Type, ExternalLink, CreditCard, Truck,
+  Calendar, Tag, Phone, Type, ExternalLink, CreditCard, Truck, Ticket,
 } from "lucide-react";
 
 export type AdminSection =
@@ -12,7 +12,7 @@ export type AdminSection =
   | "products" | "categories" | "services" | "courses" | "articles"
   | "gallery" | "reviews" | "advertisements" | "finances"
   | "admins" | "settings" | "contactInfo" | "siteTexts" | "paymentMethods"
-  | "delivery";
+  | "delivery" | "promoCodes";
 
 const PERMISSION_MAP: Record<AdminSection, string> = {
   dashboard: "dashboard",
@@ -34,6 +34,7 @@ const PERMISSION_MAP: Record<AdminSection, string> = {
   siteTexts: "settings",
   paymentMethods: "settings",
   settings: "settings",
+  promoCodes: "products",
 };
 
 interface Props {
@@ -84,6 +85,7 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
       label: lang === "uz" ? "Marketing" : lang === "ru" ? "\u041c\u0430\u0440\u043a\u0435\u0442\u0438\u043d\u0433" : "Marketing",
       items: [
         { id: "advertisements" as AdminSection, label: lang === "uz" ? "Reklamalar" : lang === "ru" ? "\u0420\u0435\u043a\u043b\u0430\u043c\u0430" : "Ads", icon: Megaphone },
+        { id: "promoCodes" as AdminSection, label: lang === "uz" ? "Promo kodlar" : lang === "ru" ? "\u041f\u0440\u043e\u043c\u043e \u043a\u043e\u0434\u044b" : "Promo Codes", icon: Ticket },
       ],
     },
     {

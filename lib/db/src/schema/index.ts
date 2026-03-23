@@ -15,3 +15,4 @@ export * from "./finances";
 export * from "./contactMessages";
 export * from "./categories";
 export * from "./delivery";
+export * from "./promoCodes";
