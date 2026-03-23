@@ -9,7 +9,7 @@ import {
   Truck, ShieldCheck, Handshake
 } from "lucide-react";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 const CATALOG_CATEGORIES = [
@@ -31,6 +31,7 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: cartRows = [] } = useQuery<{ id: number }[]>({
     queryKey: ["cart"],
@@ -45,10 +46,15 @@ export function Navbar() {
     window.location.href = "/login";
   };
 
+  const changeLang = (next: "uz" | "en" | "ru") => {
+    setLang(next);
+    queryClient.invalidateQueries();
+  };
+
   const cycleLang = () => {
     const langs: Array<"uz" | "en" | "ru"> = ["uz", "en", "ru"];
     const next = langs[(langs.indexOf(lang) + 1) % langs.length];
-    setLang(next);
+    changeLang(next);
   };
 
   const topUtilityLinks = [
@@ -119,7 +125,7 @@ export function Navbar() {
                 {(['uz', 'en', 'ru'] as const).map((l) => (
                   <button
                     key={l}
-                    onClick={() => setLang(l)}
+                    onClick={() => changeLang(l)}
                     className={`px-2 py-0.5 text-xs font-bold uppercase rounded transition-all ${
                       lang === l ? "bg-blue-700 text-white" : "text-slate-600 hover:text-blue-700"
                     }`}
@@ -481,7 +487,7 @@ export function Navbar() {
                 {(['uz', 'en', 'ru'] as const).map((l) => (
                   <button
                     key={l}
-                    onClick={() => setLang(l)}
+                    onClick={() => changeLang(l)}
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-bold uppercase rounded-xl transition-all ${
                       lang === l
                         ? "bg-blue-700 text-white shadow-md"

@@ -3,7 +3,7 @@ import { useLocation, Link } from "wouter";
 import { useAppStore } from "@/store/use-store";
 import { api } from "@/lib/api";
 import { CheckCircle, XCircle, Loader2, ShoppingBag, Home, RefreshCw } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Order {
   id: number;
@@ -19,6 +19,7 @@ export default function PaymentResult() {
   const { lang, token } = useAppStore();
   const [location] = useLocation();
   const [orderId, setOrderId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
   const isSuccess = location.startsWith("/payment/success");
   const isCancel = location.startsWith("/payment/cancel");
 
@@ -27,6 +28,14 @@ export default function PaymentResult() {
     const id = parseInt(params.get("order_id") || "");
     if (!isNaN(id)) setOrderId(id);
   }, []);
+
+  useEffect(() => {
+    if (isSuccess && token) {
+      api.delete("/cart").catch(console.error);
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    }
+  }, [isSuccess, token]);
 
   const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["orders"],

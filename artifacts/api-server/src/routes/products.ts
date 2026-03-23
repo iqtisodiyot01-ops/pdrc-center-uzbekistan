@@ -1,22 +1,53 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { productsTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and, or, ilike, sql } from "drizzle-orm";
 import { requireAdminPermission } from "../middlewares/auth";
 import { CreateProductBody, UpdateProductBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
 router.get("/products", async (req, res) => {
-  const { category } = req.query;
-  const products = await db
-    .select()
-    .from(productsTable)
-    .orderBy(asc(productsTable.sortOrder), asc(productsTable.id));
-  const filtered = category
-    ? products.filter((p) => p.category === category)
-    : products;
-  res.json(filtered);
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+  const offset = (page - 1) * limit;
+  const category = req.query.category as string | undefined;
+  const q = req.query.q as string | undefined;
+
+  const conditions = [];
+  if (category) conditions.push(eq(productsTable.category, category));
+  if (q) {
+    conditions.push(
+      or(
+        ilike(productsTable.nameUz, `%${q}%`),
+        ilike(productsTable.nameEn, `%${q}%`),
+        ilike(productsTable.nameRu, `%${q}%`),
+      ),
+    );
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [items, countResult] = await Promise.all([
+    db
+      .select()
+      .from(productsTable)
+      .where(where)
+      .orderBy(asc(productsTable.sortOrder), asc(productsTable.id))
+      .limit(limit)
+      .offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(productsTable).where(where),
+  ]);
+
+  const total = Number(countResult[0]?.count ?? 0);
+
+  res.json({
+    items,
+    total,
+    page,
+    pageSize: limit,
+    totalPages: Math.ceil(total / limit),
+  });
 });
 
 router.get("/products/:id", async (req, res) => {

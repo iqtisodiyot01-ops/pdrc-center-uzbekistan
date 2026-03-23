@@ -3,14 +3,27 @@ import jwt from "jsonwebtoken";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const rawSecret = process.env.JWT_SECRET;
-if (!rawSecret) {
+const rawJwtSecret = process.env.JWT_SECRET;
+const rawRefreshSecret = process.env.JWT_REFRESH_SECRET;
+
+if (!rawJwtSecret) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error("JWT_SECRET environment variable must be set in production");
+    console.error("FATAL: JWT_SECRET muhit o'zgaruvchisi o'rnatilmagan!");
+    process.exit(1);
   }
-  console.warn("⚠️  JWT_SECRET not set – using insecure dev fallback. Set JWT_SECRET for production.");
+  console.warn("⚠️  JWT_SECRET not set — using dev fallback. Set it in production!");
 }
-const JWT_SECRET = rawSecret ?? "pdrc-dev-fallback-not-for-production";
+
+if (!rawRefreshSecret) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("FATAL: JWT_REFRESH_SECRET muhit o'zgaruvchisi o'rnatilmagan!");
+    process.exit(1);
+  }
+  console.warn("⚠️  JWT_REFRESH_SECRET not set — using dev fallback. Set it in production!");
+}
+
+const JWT_SECRET = rawJwtSecret ?? "pdrc-dev-access-secret-change-in-production";
+const JWT_REFRESH_SECRET = rawRefreshSecret ?? "pdrc-dev-refresh-secret-change-in-production";
 
 export interface AuthPayload {
   userId: number;
@@ -41,7 +54,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
   const token = authHeader.slice(7);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
+    const payload = jwt.verify(token, JWT_SECRET!) as AuthPayload;
     req.user = payload;
     next();
   } catch {
@@ -125,5 +138,17 @@ export function requireUserAuth(req: Request, res: Response, next: NextFunction)
 }
 
 export function signToken(payload: AuthPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign(payload, JWT_SECRET!, { expiresIn: "15m" });
+}
+
+export function signRefreshToken(userId: number): string {
+  return jwt.sign({ userId }, JWT_REFRESH_SECRET!, { expiresIn: "30d" });
+}
+
+export function verifyRefreshToken(token: string): { userId: number } | null {
+  try {
+    return jwt.verify(token, JWT_REFRESH_SECRET!) as { userId: number };
+  } catch {
+    return null;
+  }
 }

@@ -9,6 +9,15 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+const ALLOWED_MIMES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+]);
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),
   filename: (_req, file, cb) => {
@@ -22,23 +31,32 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp|svg/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype.split("/")[1]);
-    if (ext && mime) cb(null, true);
-    else cb(new Error("Only image files are allowed"));
+    if (!ALLOWED_MIMES.has(file.mimetype)) {
+      return cb(new Error("Faqat rasm fayllari ruxsat etilgan (JPEG, PNG, GIF, WebP, SVG)"));
+    }
+    cb(null, true);
   },
 });
 
 const router: IRouter = Router();
 
-router.post("/upload", requireAuth, upload.single("file"), (req, res) => {
-  if (!req.file) {
-    res.status(400).json({ error: "No file uploaded" });
-    return;
-  }
-  const url = `/api/uploads/${req.file.filename}`;
-  res.json({ url, filename: req.file.filename });
+router.post("/upload", requireAuth, (req, res, next) => {
+  upload.single("file")(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+    const url = `/api/uploads/${req.file.filename}`;
+    res.json({ url, filename: req.file.filename });
+  });
 });
 
 export default router;

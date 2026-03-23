@@ -36,6 +36,8 @@ interface Stats {
   recentOrders: Array<{ id: number; fullName: string; total: number; status: string; createdAt: string }>;
   recentBookings: Array<{ id: number; name: string; phone: string; status: string; createdAt: string }>;
   recentMessages: Array<{ id: number; name: string; subject: string; isRead: boolean; createdAt: string }>;
+  lowStockProducts?: Array<{ id: number; nameUz: string; nameEn: string; nameRu: string; stock: number }>;
+  dailyRevenue?: Array<{ date: string; orders_count: number; revenue: number }>;
 }
 
 interface Props {
@@ -205,6 +207,29 @@ export function DashboardSection({ onNavigate }: Props) {
           <div className={`text-2xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>{balance.toLocaleString()} UZS</div>
         </div>
       </div>
+
+      {stats.lowStockProducts && stats.lowStockProducts.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <span className="font-bold text-sm text-red-700">
+              {lang === "uz" ? "Omborda kam qolgan mahsulotlar" : lang === "ru" ? "Мало на складе" : "Low Stock Alert"}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {stats.lowStockProducts.map((p) => (
+              <div key={p.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-100">
+                <span className="text-sm font-medium text-gray-800">
+                  {lang === "uz" ? p.nameUz : lang === "ru" ? p.nameRu : p.nameEn}
+                </span>
+                <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                  {lang === "uz" ? `${p.stock} ta qoldi` : lang === "ru" ? `Осталось ${p.stock}` : `${p.stock} left`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

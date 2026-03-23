@@ -24,6 +24,7 @@ import About from "./pages/About";
 import Delivery from "./pages/Delivery";
 import Profile from "./pages/Profile";
 import PaymentResult from "./pages/PaymentResult";
+import Articles from "./pages/Articles";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ function Router() {
         <Route path="/profile" component={Profile} />
         <Route path="/payment/success" component={PaymentResult} />
         <Route path="/payment/cancel" component={PaymentResult} />
+        <Route path="/articles" component={Articles} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

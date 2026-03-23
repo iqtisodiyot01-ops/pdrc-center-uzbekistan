@@ -6,6 +6,7 @@ import { useTranslation } from "@/lib/i18n";
 import { useLoginUser } from "@workspace/api-client-react";
 import { useAppStore } from "@/store/use-store";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Loader2, Lock } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function Login() {
   const [, setLocation] = useLocation();
   const { setToken, setUser } = useAppStore();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema)
@@ -31,6 +33,7 @@ export default function Login() {
       onSuccess: (data) => {
         setToken(data.token);
         setUser(data.user);
+        queryClient.invalidateQueries({ queryKey: ["cart"] });
         toast({ title: t.auth.login_success, description: t.auth.login_success_desc });
         if (data.user.role === "admin" || data.user.role === "superadmin") {
           setLocation("/admin");

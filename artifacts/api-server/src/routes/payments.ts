@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, productOrdersTable, siteSettingsTable } from "@workspace/db";
+import { db, productOrdersTable, siteSettingsTable, financialTransactionsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import crypto from "crypto";
@@ -17,6 +17,33 @@ function getAppUrl() {
 async function getPaymentMethodsCfg(): Promise<Record<string, Record<string, unknown>>> {
   const [row] = await db.select().from(siteSettingsTable).where(eq(siteSettingsTable.key, "paymentMethods")).limit(1);
   return (row?.value as Record<string, Record<string, unknown>>) ?? {};
+}
+
+function verifyPaymeAuth(req: { headers: { authorization?: string } }): boolean {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Basic ")) return false;
+  const secretKey = process.env.PAYME_SECRET_KEY;
+  if (!secretKey) return false;
+  const expected = `Basic ${Buffer.from(`Paycom:${secretKey}`).toString("base64")}`;
+  return auth === expected;
+}
+
+function verifyClickSign(body: {
+  click_trans_id: string;
+  service_id: string;
+  merchant_trans_id: string;
+  merchant_prepare_id?: string;
+  amount: string;
+  action: string;
+  sign_time: string;
+  sign_string: string;
+}, includePrepareId = false): boolean {
+  const secretKey = process.env.CLICK_SECRET_KEY;
+  if (!secretKey) return false;
+  const base = includePrepareId
+    ? `${body.click_trans_id}${body.service_id}${secretKey}${body.merchant_trans_id}${body.merchant_prepare_id ?? ""}${body.amount}${body.action}${body.sign_time}`
+    : `${body.click_trans_id}${body.service_id}${secretKey}${body.merchant_trans_id}${body.amount}${body.action}${body.sign_time}`;
+  return md5(base) === body.sign_string;
 }
 
 router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
@@ -95,15 +122,12 @@ router.get("/payments/checkout-url/:orderId", requireAuth, async (req, res) => {
 });
 
 router.post("/payments/payme", async (req, res) => {
-  const secretKey = process.env.PAYME_SECRET_KEY;
-  const authHeader = req.headers["authorization"];
-
-  if (secretKey) {
-    const expected = `Basic ${Buffer.from(`Paycom:${secretKey}`).toString("base64")}`;
-    if (authHeader !== expected) {
-      res.json({ error: { code: -32504, message: { uz: "Autentifikatsiya xatosi", ru: "Ошибка аутентификации", en: "Authentication failed" } }, id: req.body?.id ?? null });
-      return;
-    }
+  if (!verifyPaymeAuth(req)) {
+    res.json({
+      error: { code: -32504, message: { uz: "Autentifikatsiya xatosi", ru: "Ошибка аутентификации", en: "Authentication failed" } },
+      id: req.body?.id ?? null,
+    });
+    return;
   }
 
   const { method, params, id } = req.body ?? {};
@@ -145,9 +169,7 @@ router.post("/payments/payme", async (req, res) => {
           res.json({ error: { code: -31001, message: { uz: "Summa mos kelmaydi", ru: "Сумма не совпадает", en: "Amount mismatch" } }, id });
           return;
         }
-        await db.update(productOrdersTable)
-          .set({ paymentId: params.id })
-          .where(eq(productOrdersTable.id, orderId));
+        await db.update(productOrdersTable).set({ paymentId: params.id }).where(eq(productOrdersTable.id, orderId));
         res.json({ result: { create_time: Date.now(), transaction: params.id, state: 1 }, id });
         return;
       }
@@ -158,9 +180,17 @@ router.post("/payments/payme", async (req, res) => {
           res.json({ error: { code: -31003, message: { uz: "Tranzaksiya topilmadi", ru: "Транзакция не найдена", en: "Transaction not found" } }, id });
           return;
         }
+        const order = rows[0];
         await db.update(productOrdersTable)
           .set({ paymentStatus: "paid", status: "confirmed" })
           .where(eq(productOrdersTable.paymentId, params.id));
+        await db.insert(financialTransactionsTable).values({
+          type: "income",
+          amount: order.total,
+          description: `Payme to'lovi — Buyurtma #${order.id}`,
+          category: "sales",
+          referenceId: `order_${order.id}`,
+        });
         res.json({ result: { transaction: params.id, perform_time: Date.now(), state: 2 }, id });
         return;
       }
@@ -221,13 +251,9 @@ router.post("/payments/payme", async (req, res) => {
 router.post("/payments/click/prepare", async (req, res) => {
   const { click_trans_id, service_id, merchant_trans_id, amount, action, sign_time, sign_string } = req.body;
 
-  const secretKey = process.env.CLICK_SECRET_KEY;
-  if (secretKey && service_id) {
-    const expected = md5(`${click_trans_id}${service_id}${secretKey}${merchant_trans_id}${amount}${sign_time}`);
-    if (sign_string !== expected) {
-      res.json({ error: -1, error_note: "SIGN CHECK FAILED!" });
-      return;
-    }
+  if (!verifyClickSign({ click_trans_id, service_id, merchant_trans_id, amount, action, sign_time, sign_string })) {
+    res.json({ error: -1, error_note: "SIGN CHECK FAILED!" });
+    return;
   }
 
   if (action !== 0) {
@@ -258,13 +284,9 @@ router.post("/payments/click/prepare", async (req, res) => {
 router.post("/payments/click/complete", async (req, res) => {
   const { click_trans_id, service_id, merchant_trans_id, merchant_prepare_id, amount, action, sign_time, sign_string, error: clickError } = req.body;
 
-  const secretKey = process.env.CLICK_SECRET_KEY;
-  if (secretKey && service_id) {
-    const expected = md5(`${click_trans_id}${service_id}${secretKey}${merchant_trans_id}${merchant_prepare_id}${amount}${sign_time}`);
-    if (sign_string !== expected) {
-      res.json({ error: -1, error_note: "SIGN CHECK FAILED!" });
-      return;
-    }
+  if (!verifyClickSign({ click_trans_id, service_id, merchant_trans_id, merchant_prepare_id, amount, action, sign_time, sign_string }, true)) {
+    res.json({ error: -1, error_note: "SIGN CHECK FAILED!" });
+    return;
   }
 
   if (action !== 1) {
@@ -274,9 +296,19 @@ router.post("/payments/click/complete", async (req, res) => {
 
   const orderId = parseInt(merchant_trans_id);
   if (clickError === 0) {
+    const [order] = await db.select().from(productOrdersTable).where(eq(productOrdersTable.id, orderId));
     await db.update(productOrdersTable)
       .set({ paymentStatus: "paid", status: "confirmed" })
       .where(eq(productOrdersTable.id, orderId));
+    if (order) {
+      await db.insert(financialTransactionsTable).values({
+        type: "income",
+        amount: order.total,
+        description: `Click to'lovi — Buyurtma #${orderId}`,
+        category: "sales",
+        referenceId: `order_${orderId}`,
+      });
+    }
   } else {
     await db.update(productOrdersTable)
       .set({ paymentStatus: "cancelled" })

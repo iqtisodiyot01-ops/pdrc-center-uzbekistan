@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, usersTable, productOrdersTable, bookingsTable, productsTable, servicesTable, coursesTable, contactMessagesTable, advertisementsTable, financialTransactionsTable, galleryTable, reviewsTable, articlesTable } from "@workspace/db";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, lte, and } from "drizzle-orm";
 import { requireAdminPermission } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -34,6 +34,8 @@ router.get("/admin/stats", requireAdminPermission("dashboard"), async (_req, res
     recentMessages,
     todayOrders,
     thisMonthRevenue,
+    lowStockProducts,
+    dailyRevenue,
   ] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(productOrdersTable),
     db.select({ sum: sql<number>`coalesce(sum(total), 0)` }).from(productOrdersTable).where(eq(productOrdersTable.status, "delivered")),
@@ -62,6 +64,19 @@ router.get("/admin/stats", requireAdminPermission("dashboard"), async (_req, res
     db.select().from(contactMessagesTable).orderBy(sql`created_at desc`).limit(5),
     db.select({ count: sql<number>`count(*)` }).from(productOrdersTable).where(sql`created_at >= current_date`),
     db.select({ sum: sql<number>`coalesce(sum(total), 0)` }).from(productOrdersTable).where(sql`created_at >= date_trunc('month', current_date) AND status = 'delivered'`),
+    db.select().from(productsTable).where(and(lte(productsTable.stock, 5), eq(productsTable.inStock, true))).orderBy(productsTable.stock).limit(10),
+    db.execute(sql`
+      SELECT
+        DATE(created_at) as date,
+        COUNT(*) as orders_count,
+        COALESCE(SUM(total), 0) as revenue
+      FROM product_orders
+      WHERE
+        created_at >= NOW() - INTERVAL '30 days'
+        AND payment_status = 'paid'
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `),
   ]);
 
   res.json({
@@ -92,6 +107,8 @@ router.get("/admin/stats", requireAdminPermission("dashboard"), async (_req, res
     recentOrders,
     recentBookings,
     recentMessages,
+    lowStockProducts,
+    dailyRevenue: dailyRevenue.rows,
   });
 });
 

@@ -3,10 +3,18 @@ import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAuth, signToken } from "../middlewares/auth";
+import { requireAuth, signToken, signRefreshToken, verifyRefreshToken } from "../middlewares/auth";
 import { RegisterUserBody, LoginUserBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+
+const REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  path: "/api/auth/refresh",
+};
 
 router.post("/auth/register", async (req, res) => {
   const parsed = RegisterUserBody.safeParse(req.body);
@@ -30,6 +38,9 @@ router.post("/auth/register", async (req, res) => {
     .returning();
 
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
+  const refreshToken = signRefreshToken(user.id);
+
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
 
   res.status(201).json({
     token,
@@ -71,9 +82,50 @@ router.post("/auth/login", async (req, res) => {
   }
 
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
+  const refreshToken = signRefreshToken(user.id);
+
+  res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
 
   res.json({
     token,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      permissions: user.permissions,
+      createdAt: user.createdAt,
+    },
+  });
+});
+
+router.post("/auth/refresh", async (req, res) => {
+  const token = req.cookies?.refreshToken;
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized", message: "Refresh token yo'q" });
+    return;
+  }
+
+  const payload = verifyRefreshToken(token);
+  if (!payload) {
+    res.status(401).json({ error: "Unauthorized", message: "Yaroqsiz refresh token" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, payload.userId)).limit(1);
+  if (!user || !user.isActive) {
+    res.status(401).json({ error: "Unauthorized", message: "Foydalanuvchi topilmadi" });
+    return;
+  }
+
+  const accessToken = signToken({ userId: user.id, email: user.email, role: user.role });
+  const newRefreshToken = signRefreshToken(user.id);
+
+  res.cookie("refreshToken", newRefreshToken, REFRESH_COOKIE_OPTIONS);
+
+  res.json({
+    token: accessToken,
     user: {
       id: user.id,
       name: user.name,
@@ -129,6 +181,7 @@ router.put("/auth/change-password", requireAuth, async (req, res) => {
 });
 
 router.post("/auth/logout", (_req, res) => {
+  res.clearCookie("refreshToken", { path: "/api/auth/refresh" });
   res.json({ success: true, message: "Logged out successfully" });
 });
 

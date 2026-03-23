@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, cartItemsTable, productsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -27,20 +27,16 @@ router.post("/cart", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Bad request", message: "productId required" });
     return;
   }
-  const existing = await db
-    .select()
-    .from(cartItemsTable)
-    .where(and(eq(cartItemsTable.userId, userId), eq(cartItemsTable.productId, productId)));
-  if (existing.length > 0) {
-    const [updated] = await db
-      .update(cartItemsTable)
-      .set({ quantity: existing[0].quantity + quantity })
-      .where(eq(cartItemsTable.id, existing[0].id))
-      .returning();
-    res.json(updated);
-    return;
-  }
-  const [item] = await db.insert(cartItemsTable).values({ userId, productId, quantity }).returning();
+
+  const [item] = await db
+    .insert(cartItemsTable)
+    .values({ userId, productId, quantity })
+    .onConflictDoUpdate({
+      target: [cartItemsTable.userId, cartItemsTable.productId],
+      set: { quantity: sql`cart_items.quantity + ${quantity}` },
+    })
+    .returning();
+
   res.status(201).json(item);
 });
 

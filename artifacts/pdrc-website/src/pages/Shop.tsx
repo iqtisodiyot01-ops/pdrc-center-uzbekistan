@@ -306,8 +306,18 @@ export default function Shop() {
           {/* Products grid / list */}
           <div className="flex-1 overflow-y-auto px-4 pb-6">
             {isLoading ? (
-              <div className="flex items-center justify-center py-24">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden animate-pulse">
+                    <div className="aspect-square bg-gray-200" />
+                    <div className="p-3 space-y-2">
+                      <div className="h-3 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="h-5 bg-gray-200 rounded w-2/3 mt-1" />
+                      <div className="h-8 bg-gray-200 rounded w-full mt-2" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
