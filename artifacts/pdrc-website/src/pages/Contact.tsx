@@ -101,13 +101,13 @@ export default function Contact() {
                       className="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 hover:bg-blue-700 hover:text-white transition-all">
                       <Instagram size={16} />
                     </a>
-                    <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer"
+                    <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer"
                       className="w-9 h-9 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 hover:bg-blue-700 hover:text-white transition-all">
                       <Send size={16} />
                     </a>
                   </div>
                   <p className="text-gray-400 text-sm mt-2">@pdrcenteruzbekistan</p>
-                  <p className="text-gray-400 text-sm">@pdrtoolls (Telegram)</p>
+                  <p className="text-gray-400 text-sm">@pdr_toolls (Telegram)</p>
                 </div>
               </div>
             </div>
@@ -119,9 +119,9 @@ export default function Contact() {
               className="flex items-center justify-center gap-3 px-6 py-4 bg-blue-700 text-white rounded-xl font-bold hover:bg-blue-800 transition-colors">
               <Phone size={18} /> +998 90 578 32 72
             </a>
-            <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer"
+            <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer"
               className="flex items-center justify-center gap-3 px-6 py-4 bg-[#0f3460] text-white rounded-xl font-bold hover:bg-[#1a4f8a] transition-colors">
-              <Send size={18} /> @pdrtoolls (Telegram)
+              <Send size={18} /> @pdr_toolls (Telegram)
             </a>
           </div>
         </div>

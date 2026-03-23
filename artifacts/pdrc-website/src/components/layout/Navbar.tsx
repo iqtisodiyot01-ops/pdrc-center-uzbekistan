@@ -203,7 +203,7 @@ export function Navbar() {
                   className="w-8 h-8 rounded-full bg-green-50 border border-green-200 flex items-center justify-center text-green-600 hover:bg-green-600 hover:text-white transition-all">
                   <MessageCircle size={14} />
                 </a>
-                <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer" title="Telegram"
+                <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer" title="Telegram"
                   className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-600 hover:text-white transition-all">
                   <Send size={14} />
                 </a>
@@ -357,7 +357,7 @@ export function Navbar() {
               className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white hover:bg-green-600 transition-colors">
               <MessageCircle size={14} />
             </a>
-            <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer" title="Telegram"
+            <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer" title="Telegram"
               className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white hover:bg-blue-600 transition-colors">
               <Send size={14} />
             </a>

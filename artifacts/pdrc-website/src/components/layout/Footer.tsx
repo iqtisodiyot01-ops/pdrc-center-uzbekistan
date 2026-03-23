@@ -20,7 +20,7 @@ export function Footer() {
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white hover:text-[#0f3460] transition-all">
               <Instagram size={18} />
             </a>
-            <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer"
+            <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer"
               className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white hover:text-[#0f3460] transition-all">
               <Send size={18} />
             </a>
@@ -76,7 +76,7 @@ export function Footer() {
             <p className="text-gray-500 text-sm leading-relaxed mb-4">pdrcenteruzbekistan.com</p>
             <div className="space-y-1">
               <p className="text-sm text-gray-500">@pdrcenteruzbekistan</p>
-              <p className="text-sm text-gray-500">@pdrtoolls (Telegram)</p>
+              <p className="text-sm text-gray-500">@pdr_toolls (Telegram)</p>
             </div>
           </div>
 

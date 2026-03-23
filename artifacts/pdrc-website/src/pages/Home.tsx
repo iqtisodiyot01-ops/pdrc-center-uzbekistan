@@ -72,8 +72,8 @@ export default function Home() {
               <a href="tel:+998905783272" className="flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors">
                 <Phone size={14} /> +998 90 578 32 72
               </a>
-              <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors">
-                <Send size={14} /> @pdrtoolls
+              <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-blue-200 hover:text-white text-sm transition-colors">
+                <Send size={14} /> @pdr_toolls
               </a>
             </div>
           </motion.div>
@@ -212,7 +212,7 @@ export default function Home() {
               <Phone size={18} /> {t.hero.cta}
             </a>
             <a
-              href="https://t.me/pdrtoolls"
+              href="https://t.me/pdr_toolls"
               target="_blank"
               rel="noreferrer"
               className="px-8 py-4 bg-white/10 text-white border border-white/20 font-display font-bold uppercase tracking-widest rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"

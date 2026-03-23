@@ -1129,11 +1129,11 @@ APP_URL=https://pdrcenteruzbekistan.com
 ```
 Telefon 1:    +998905783272
 Telefon 2:    +998974026565
-Telegram:     @pdrtoolls
+Telegram:     @pdr_toolls
 Instagram:    pdrcenteruzbekistan
 YouTube:      pdrcenteruzbekistan
 WhatsApp:     +998905783272
-Telegram URL: https://t.me/pdrtoolls
+Telegram URL: https://t.me/pdr_toolls
 Instagram URL: https://instagram.com/pdrcenteruzbekistan
 YouTube URL:  https://youtube.com/@pdrcenteruzbekistan
 WhatsApp URL: https://wa.me/998905783272

@@ -271,7 +271,7 @@ export default function Delivery() {
               className="px-8 py-4 bg-[#0f3460] text-white font-display font-bold uppercase tracking-wider rounded-xl hover:bg-blue-800 transition-colors flex items-center justify-center gap-2">
               <Phone size={16} /> {p.cta_btn}
             </a>
-            <a href="https://t.me/pdrtoolls" target="_blank" rel="noreferrer"
+            <a href="https://t.me/pdr_toolls" target="_blank" rel="noreferrer"
               className="px-8 py-4 bg-blue-50 text-[#0f3460] border border-blue-200 font-display font-bold uppercase tracking-wider rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
               <Send size={16} /> Telegram
             </a>

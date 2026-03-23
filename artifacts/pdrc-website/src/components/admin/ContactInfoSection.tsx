@@ -107,15 +107,15 @@ export function ContactInfoSection() {
         <div className="space-y-3">
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 flex items-center gap-1">
-              <Send size={11} className="text-blue-500" /> Telegram {lang === "uz" ? "kanal nomi" : lang === "ru" ? "имя канала" : "Channel Name"} <span className="font-normal text-gray-400 normal-case">(@pdrtoolls)</span>
+              <Send size={11} className="text-blue-500" /> Telegram {lang === "uz" ? "kanal nomi" : lang === "ru" ? "имя канала" : "Channel Name"} <span className="font-normal text-gray-400 normal-case">(@pdr_toolls)</span>
             </label>
-            <input value={social.telegram} onChange={(e) => setSocial({ ...social, telegram: e.target.value })} className={inputClass} placeholder="@pdrtoolls" />
+            <input value={social.telegram} onChange={(e) => setSocial({ ...social, telegram: e.target.value })} className={inputClass} placeholder="@pdr_toolls" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 flex items-center gap-1">
               <Send size={11} className="text-blue-500" /> Telegram {lang === "uz" ? "havola" : lang === "ru" ? "ссылка" : "Link"}
             </label>
-            <input value={social.telegramUrl} onChange={(e) => setSocial({ ...social, telegramUrl: e.target.value })} className={inputClass} placeholder="https://t.me/pdrtoolls" />
+            <input value={social.telegramUrl} onChange={(e) => setSocial({ ...social, telegramUrl: e.target.value })} className={inputClass} placeholder="https://t.me/pdr_toolls" />
           </div>
           <div>
             <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 flex items-center gap-1">

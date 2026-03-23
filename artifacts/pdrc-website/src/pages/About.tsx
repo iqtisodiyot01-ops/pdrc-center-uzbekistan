@@ -270,7 +270,7 @@ export default function About() {
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-3">
                   <Send size={16} className="text-blue-300 shrink-0" />
-                  <span className="text-sm">@pdrtoolls · @pdrcenteruzbekistan</span>
+                  <span className="text-sm">@pdr_toolls · @pdrcenteruzbekistan</span>
                 </div>
               </div>
             </div>
@@ -365,7 +365,7 @@ export default function About() {
               <Phone size={16} /> {p.cta_btn}
             </Link>
             <a
-              href="https://t.me/pdrtoolls"
+              href="https://t.me/pdr_toolls"
               target="_blank"
               rel="noreferrer"
               className="px-8 py-4 bg-white/10 text-white border border-white/20 font-display font-bold uppercase tracking-wider rounded-xl hover:bg-white/20 transition-colors flex items-center justify-center gap-2"

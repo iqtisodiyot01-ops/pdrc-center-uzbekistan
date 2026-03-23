@@ -6,7 +6,7 @@ const defaults = [
     value: {
       phone1: "+998905783272",
       phone2: "+998974026565",
-      telegram: "@pdrtoolls",
+      telegram: "@pdr_toolls",
       instagram: "pdrcenteruzbekistan",
       youtube: "pdrcenteruzbekistan",
       whatsapp: "+998905783272",
@@ -26,7 +26,7 @@ const defaults = [
   {
     key: "social",
     value: {
-      telegramUrl: "https://t.me/pdrtoolls",
+      telegramUrl: "https://t.me/pdr_toolls",
       instagramUrl: "https://instagram.com/pdrcenteruzbekistan",
       youtubeUrl: "https://youtube.com/@pdrcenteruzbekistan",
       whatsappUrl: "https://wa.me/998905783272",
