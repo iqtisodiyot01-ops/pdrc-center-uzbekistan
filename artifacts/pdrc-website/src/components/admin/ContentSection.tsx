@@ -81,6 +81,7 @@ export function ContentSection({ title, apiPath, queryKey, fields, displayFn, de
     fields.forEach((f) => {
       if (f.type === "number") data[f.key] = Number(form[f.key]) || 0;
       else if (f.type === "checkbox") data[f.key] = !!form[f.key];
+      else if (f.type === "select") data[f.key] = form[f.key] || f.options?.[0] || "";
       else data[f.key] = form[f.key] || (f.type === "text" || f.type === "textarea" ? "" : null);
     });
     if (editing) updateItem.mutate({ id: editing.id, ...data });
