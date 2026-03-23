@@ -108,18 +108,18 @@ export function ContentSection({ title, apiPath, queryKey, fields, displayFn, de
               <div key={field.key} className={field.type === "textarea" ? "col-span-full" : ""}>
                 <label className="text-xs font-bold text-gray-500 uppercase block mb-1">{field.label}</label>
                 {field.type === "image" ? (
-                  <ImageUpload value={String(form[field.key] || "")} onChange={(url) => setForm({ ...form, [field.key]: url })} />
+                  <ImageUpload value={String(form[field.key] || "")} onChange={(url) => setForm((prev) => ({ ...prev, [field.key]: url }))} />
                 ) : field.type === "textarea" ? (
-                  <textarea value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                  <textarea value={String(form[field.key] || "")} onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, [field.key]: v })); }}
                     className={`${inputClass} resize-none h-24`} required={field.required} placeholder={field.placeholder} />
                 ) : field.type === "select" ? (
-                  <select value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })} className={inputClass}>
+                  <select value={String(form[field.key] || "")} onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, [field.key]: v })); }} className={inputClass}>
                     {field.options?.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 ) : field.type === "checkbox" ? (
-                  <input type="checkbox" checked={!!form[field.key]} onChange={(e) => setForm({ ...form, [field.key]: e.target.checked })} className="w-4 h-4 accent-blue-600" />
+                  <input type="checkbox" checked={!!form[field.key]} onChange={(e) => { const v = e.target.checked; setForm((prev) => ({ ...prev, [field.key]: v })); }} className="w-4 h-4 accent-blue-600" />
                 ) : (
-                  <input type={field.type} value={String(form[field.key] || "")} onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                  <input type={field.type} value={String(form[field.key] || "")} onChange={(e) => { const v = e.target.value; setForm((prev) => ({ ...prev, [field.key]: v })); }}
                     className={inputClass} required={field.required} placeholder={field.placeholder} />
                 )}
               </div>
