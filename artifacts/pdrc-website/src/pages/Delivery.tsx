@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import {
-  Truck, Clock, CreditCard, Phone, CheckCircle2,
-  Package, MapPin, Send, ShieldCheck, Banknote,
-  Globe, Wallet, Building, Loader2,
+  Truck, Clock, CreditCard, Phone,
+  Package, Send, ShieldCheck, Banknote,
+  Globe, MapPin, Wallet, Building, Loader2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -160,29 +160,7 @@ export default function Delivery() {
 
           {zonesLoading ? (
             <div className="flex justify-center py-12"><Loader2 className="animate-spin text-blue-600" size={32} /></div>
-          ) : zones.length === 0 ? (
-            /* Fallback hardcoded zones if DB is empty */
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[
-                { icon: MapPin, title: lang === "uz" ? "Toshkent shahri" : lang === "ru" ? "Город Ташкент" : "Tashkent City", time: lang === "uz" ? "1–2 ish kuni" : lang === "ru" ? "1–2 рабочих дня" : "1–2 business days", price: lang === "uz" ? "Bepul (500 000 UZS dan yuqori buyurtma)" : lang === "ru" ? "Бесплатно (заказ от 500 000 UZS)" : "Free (orders over 500,000 UZS)", subtext: lang === "uz" ? "30 000 UZS (kichik buyurtma)" : lang === "ru" ? "30 000 UZS (небольшой заказ)" : "30,000 UZS (small orders)", color: COLOR_MAP["green"] },
-                { icon: Truck, title: lang === "uz" ? "Viloyatlar (O'zbekiston)" : lang === "ru" ? "Регионы Узбекистана" : "Uzbekistan Regions", time: lang === "uz" ? "3–7 ish kuni" : lang === "ru" ? "3–7 рабочих дней" : "3–7 business days", price: lang === "uz" ? "50 000 – 100 000 UZS" : lang === "ru" ? "50 000 – 100 000 UZS" : "50,000 – 100,000 UZS", subtext: lang === "uz" ? "Kuryerlik xizmati orqali" : lang === "ru" ? "Через курьерскую службу" : "Via courier service", color: COLOR_MAP["blue"] },
-                { icon: Package, title: lang === "uz" ? "Xalqaro yetkazib berish" : lang === "ru" ? "Международная доставка" : "International", time: lang === "uz" ? "7–14 kun" : lang === "ru" ? "7–14 дней" : "7–14 days", price: lang === "uz" ? "Individual hisoblash" : lang === "ru" ? "Индивидуальный расчёт" : "Individual pricing", subtext: lang === "uz" ? "Xalqaro pochta / kuryer" : lang === "ru" ? "Международная почта / курьер" : "International post / courier", color: COLOR_MAP["purple"] },
-              ].map((zone, i) => {
-                const Icon = zone.icon;
-                return (
-                  <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                    className={`rounded-2xl border p-6 ${zone.color.bg} ${zone.color.border}`}>
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${zone.color.badge}`}><Icon size={22} /></div>
-                    <h3 className={`text-base font-bold mb-3 ${zone.color.text}`}>{zone.title}</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm"><Clock size={14} className="text-gray-400 shrink-0" /><span className="text-gray-700">{zone.time}</span></div>
-                      <div className="flex items-start gap-2 text-sm"><CreditCard size={14} className="text-gray-400 mt-0.5 shrink-0" /><div><div className="text-gray-700 font-semibold">{zone.price}</div><div className="text-gray-500 text-xs">{zone.subtext}</div></div></div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
+          ) : zones.length === 0 ? null : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {zones.map((zone, i) => {
                 const color = COLOR_MAP[zone.color as ColorKey] ?? COLOR_MAP["blue"];
