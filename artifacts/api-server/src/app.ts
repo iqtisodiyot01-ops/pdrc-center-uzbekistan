@@ -8,6 +8,7 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+app.set("trust proxy", 1);
 
 const PROD_ORIGINS = [
   process.env.APP_URL || "https://pdrcenteruzbekistan.com",
