@@ -28,10 +28,14 @@ export function FinancesSection() {
     },
   });
 
-  const { data: products } = useQuery<Array<{ id: number; nameUz: string; nameEn: string; price: number; inStock: boolean }>>({
+  type ProductItem = { id: number; nameUz: string; nameEn: string; price: number; inStock: boolean };
+  const { data: productsRaw } = useQuery<{ items: ProductItem[] } | ProductItem[]>({
     queryKey: ["products"],
     queryFn: () => api.get("/products"),
   });
+  const products: ProductItem[] = Array.isArray(productsRaw)
+    ? productsRaw
+    : (productsRaw as { items: ProductItem[] })?.items ?? [];
 
   const createTx = useMutation({
     mutationFn: (txData: Record<string, unknown>) => api.post("/admin/finances", txData),

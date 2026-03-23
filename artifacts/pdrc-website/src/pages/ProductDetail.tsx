@@ -31,11 +31,13 @@ export default function ProductDetail() {
     enabled: !!params.id && !!token,
   });
 
-  const { data: allProducts = [] } = useQuery<Product[]>({
+  const { data: allProductsData } = useQuery<{ items: Product[] } | Product[]>({
     queryKey: ["products"],
-    queryFn: () => api.get<Product[]>("/products"),
-    enabled: !!token,
+    queryFn: () => api.get("/products"),
   });
+  const allProducts: Product[] = Array.isArray(allProductsData)
+    ? allProductsData
+    : (allProductsData as { items: Product[] })?.items ?? [];
 
   const { data: wishlistItems = [] } = useQuery<{ id: number; product: { id: number } | null }[]>({
     queryKey: ["wishlist"],

@@ -75,11 +75,14 @@ export default function Shop() {
     queryFn: () => api.get<ApiCategory[]>("/categories"),
   });
 
-  const { data: products = [], isLoading } = useQuery<Product[]>({
+  const { data: productsData, isLoading } = useQuery<{ items: Product[] } | Product[]>({
     queryKey: ["products"],
-    queryFn: () => api.get<Product[]>("/products"),
-    enabled: !!token,
+    queryFn: () => api.get("/products"),
   });
+
+  const products: Product[] = Array.isArray(productsData)
+    ? productsData
+    : (productsData as { items: Product[] })?.items ?? [];
 
   const { data: wishlistItems = [] } = useQuery<{ id: number; product: { id: number } | null }[]>({
     queryKey: ["wishlist"],
