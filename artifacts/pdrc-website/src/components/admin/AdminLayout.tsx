@@ -4,14 +4,15 @@ import {
   LayoutDashboard, Package, MessageSquare, Wrench, ShoppingCart,
   GraduationCap, FileText, Users, Image, Star, Megaphone,
   DollarSign, Settings, ChevronLeft, ChevronRight, Menu, LogOut, Shield,
-  Calendar, Tag, Phone, Type, ExternalLink, CreditCard,
+  Calendar, Tag, Phone, Type, ExternalLink, CreditCard, Truck,
 } from "lucide-react";
 
 export type AdminSection =
   | "dashboard" | "orders" | "messages" | "bookings"
   | "products" | "categories" | "services" | "courses" | "articles"
   | "gallery" | "reviews" | "advertisements" | "finances"
-  | "admins" | "settings" | "contactInfo" | "siteTexts" | "paymentMethods";
+  | "admins" | "settings" | "contactInfo" | "siteTexts" | "paymentMethods"
+  | "delivery";
 
 const PERMISSION_MAP: Record<AdminSection, string> = {
   dashboard: "dashboard",
@@ -28,6 +29,7 @@ const PERMISSION_MAP: Record<AdminSection, string> = {
   advertisements: "advertisements",
   finances: "finances",
   admins: "admins",
+  delivery: "settings",
   contactInfo: "settings",
   siteTexts: "settings",
   paymentMethods: "settings",
@@ -94,6 +96,7 @@ export function AdminLayout({ activeSection, onSectionChange, unreadMessages, pe
       label: lang === "uz" ? "Tizim" : lang === "ru" ? "\u0421\u0438\u0441\u0442\u0435\u043c\u0430" : "System",
       items: [
         { id: "admins" as AdminSection, label: lang === "uz" ? "Adminlar" : lang === "ru" ? "\u0410\u0434\u043c\u0438\u043d\u044b" : "Admins", icon: Shield },
+        { id: "delivery" as AdminSection, label: lang === "uz" ? "Yetkazib berish" : lang === "ru" ? "Доставка" : "Delivery", icon: Truck },
         { id: "contactInfo" as AdminSection, label: lang === "uz" ? "Raqamlar & Havolalar" : lang === "ru" ? "Номера & Ссылки" : "Contacts & Links", icon: Phone },
         { id: "siteTexts" as AdminSection, label: lang === "uz" ? "Sayt matnlari" : lang === "ru" ? "Тексты сайта" : "Site Texts", icon: Type, superAdminOnly: true },
         { id: "paymentMethods" as AdminSection, label: lang === "uz" ? "To'lov usullari" : lang === "ru" ? "Способы оплаты" : "Payment Methods", icon: CreditCard, superAdminOnly: true },

@@ -5,7 +5,7 @@ import { Link } from "wouter";
 import {
   X, ShoppingCart, Plus, Minus, Trash2, Package,
   CreditCard, ExternalLink, ArrowRight, ChevronLeft, CheckCircle2,
-  ShoppingBag, Tag, Copy, Check, Loader2,
+  ShoppingBag, Tag, Copy, Check, Loader2, Truck,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-store";
 import { api } from "@/lib/api";
@@ -25,6 +25,11 @@ interface PaymentMethodsResponse {
   paynet?: { enabled: true };
   visaCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
   uzcardCard?: { enabled: true; cardNumber: string; cardNumberMasked: string; cardHolder: string };
+}
+
+interface DeliveryZone {
+  id: number; nameUz: string; nameEn: string; nameRu: string;
+  price: number; estimatedTime: string; isActive: boolean; sortOrder: number;
 }
 
 interface CartDrawerProps { open: boolean; onClose: () => void; }
@@ -74,6 +79,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const qc = useQueryClient();
   const [checkout, setCheckout] = useState(false);
   const [form, setForm] = useState({ fullName: "", phone: "", deliveryAddress: "" });
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null);
   const [redirectLoading, setRedirectLoading] = useState<string | null>(null);
   const [shownCard, setShownCard] = useState<"visaCard" | "uzcardCard" | null>(null);
@@ -140,6 +146,12 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     enabled: open && !!token,
   });
 
+  const { data: deliveryZones = [] } = useQuery<DeliveryZone[]>({
+    queryKey: ["delivery-zones"],
+    queryFn: () => api.get<DeliveryZone[]>("/delivery-zones"),
+    enabled: open,
+  });
+
   const updateQty = useMutation({
     mutationFn: ({ id, quantity }: { id: number; quantity: number }) => api.put(`/cart/${id}`, { quantity }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cart"] }),
@@ -151,7 +163,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   });
 
   const placeOrder = useMutation({
-    mutationFn: (payload: { fullName: string; phone: string; deliveryAddress: string; paymentMethod: string; items: OrderItem[]; total: number }) =>
+    mutationFn: (payload: { fullName: string; phone: string; deliveryAddress: string; paymentMethod: string; items: OrderItem[]; total: number; deliveryZoneName?: string; deliveryPrice?: number }) =>
       api.post<{ id: number }>("/orders", payload),
     onSuccess: (data) => {
       setCreatedOrderId(data.id);
@@ -163,8 +175,13 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 
   const getProductName = (p: Product) => lang === "ru" ? p.nameRu : lang === "en" ? p.nameEn : p.nameUz;
   const getEffectivePrice = (p: Product) => (p.discountPrice && p.discountPrice < p.price) ? p.discountPrice : p.price;
-  const total = cartRows.reduce((sum, row) => sum + getEffectivePrice(row.product || { id: 0, nameUz: "", nameEn: "", nameRu: "", price: 0, category: "" }) * row.quantity, 0);
+  const itemsTotal = cartRows.reduce((sum, row) => sum + getEffectivePrice(row.product || { id: 0, nameUz: "", nameEn: "", nameRu: "", price: 0, category: "" }) * row.quantity, 0);
+  const selectedZone = deliveryZones.find((z) => z.id === selectedZoneId) ?? null;
+  const deliveryPrice = selectedZone?.price ?? 0;
+  const total = itemsTotal + deliveryPrice;
   const itemCount = cartRows.reduce((sum, row) => sum + row.quantity, 0);
+
+  const getZoneName = (z: DeliveryZone) => lang === "ru" ? z.nameRu : lang === "en" ? z.nameEn : z.nameUz;
 
   const handleOrder = () => {
     if (!form.fullName || !form.phone || !form.deliveryAddress) {
@@ -175,7 +192,10 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
       productId: r.product!.id, productName: getProductName(r.product!),
       price: getEffectivePrice(r.product!), quantity: r.quantity,
     }));
-    placeOrder.mutate({ ...form, paymentMethod: "pending", items, total });
+    placeOrder.mutate({
+      ...form, paymentMethod: "pending", items, total,
+      ...(selectedZone ? { deliveryZoneName: getZoneName(selectedZone), deliveryPrice: selectedZone.price } : {}),
+    });
   };
 
   const handleRedirectPayment = async (method: "payme" | "click" | "uzumbank" | "paynet", orderId: number) => {
@@ -195,6 +215,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     setCheckout(false);
     setShownCard(null);
     setRedirectLoading(null);
+    setSelectedZoneId(null);
     onClose();
   };
 
@@ -430,11 +451,53 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         </div>
                       ))}
                     </div>
-                    <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-600">{t.total}</span>
-                      <span className="font-bold text-base text-[#0f3460]">{total.toLocaleString()} {t.som}</span>
+                    <div className="pt-3 border-t border-gray-200 space-y-1.5">
+                      {selectedZone && (
+                        <div className="flex justify-between items-center text-xs text-gray-500">
+                          <span className="flex items-center gap-1"><Truck size={11} />{getZoneName(selectedZone)}</span>
+                          <span>+ {deliveryPrice.toLocaleString()} {t.som}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-gray-600">{t.total}</span>
+                        <span className="font-bold text-base text-[#0f3460]">{total.toLocaleString()} {t.som}</span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Delivery zone */}
+                  {deliveryZones.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                        <Truck size={12} />
+                        {lang === "uz" ? "Yetkazib berish zonasi" : lang === "ru" ? "Зона доставки" : "Delivery zone"}
+                      </label>
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedZoneId(null)}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm border transition-all ${selectedZoneId === null ? "border-blue-500 bg-blue-50 text-blue-800 font-semibold" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}
+                        >
+                          <span>{lang === "uz" ? "O'zim olib ketaman" : lang === "ru" ? "Самовывоз" : "Self pickup"}</span>
+                          <span className="text-xs font-bold text-green-600">{lang === "uz" ? "Bepul" : lang === "ru" ? "Бесплатно" : "Free"}</span>
+                        </button>
+                        {deliveryZones.map((z) => (
+                          <button
+                            key={z.id}
+                            type="button"
+                            onClick={() => setSelectedZoneId(z.id)}
+                            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm border transition-all ${selectedZoneId === z.id ? "border-blue-500 bg-blue-50 text-blue-800 font-semibold" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
+                          >
+                            <span className="text-left">
+                              <span className="block">{getZoneName(z)}</span>
+                              <span className="text-[11px] font-normal text-gray-400">{z.estimatedTime}</span>
+                            </span>
+                            <span className="text-xs font-bold text-[#0f3460] shrink-0 ml-2">{z.price > 0 ? `${z.price.toLocaleString()} ${t.som}` : (lang === "uz" ? "Bepul" : lang === "ru" ? "Бесплатно" : "Free")}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Form fields */}
                   {[

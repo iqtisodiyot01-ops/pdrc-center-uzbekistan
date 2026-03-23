@@ -21,6 +21,7 @@ import financesRouter from "./finances";
 import contactMessagesRouter from "./contactMessages";
 import uploadRouter from "./upload";
 import categoriesRouter from "./categories";
+import deliveryRouter from "./delivery";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(financesRouter);
 router.use(contactMessagesRouter);
 router.use(uploadRouter);
 router.use(categoriesRouter);
+router.use(deliveryRouter);
 
 export default router;

@@ -255,6 +255,30 @@ export default function Admin() {
         return <FinancesSection />;
       case "admins":
         return <AdminsSection />;
+      case "delivery":
+        return (
+          <ContentSection
+            title={lang === "uz" ? "Yetkazib berish zonalari" : lang === "ru" ? "Зоны доставки" : "Delivery Zones"}
+            apiPath="admin/delivery-zones"
+            queryKey="admin-delivery-zones"
+            fields={[
+              { key: "nameUz", label: "Zona nomi (UZ)", type: "text", required: true },
+              { key: "nameEn", label: "Zone name (EN)", type: "text", required: true },
+              { key: "nameRu", label: "Название зоны (RU)", type: "text", required: true },
+              { key: "price", label: lang === "uz" ? "Narxi (UZS)" : "Price (UZS)", type: "number", required: true },
+              { key: "estimatedTime", label: lang === "uz" ? "Yetkazish muddati" : "Delivery time", type: "text", required: true },
+              { key: "sortOrder", label: lang === "uz" ? "Tartib raqami" : "Sort order", type: "number" },
+              { key: "isActive", label: lang === "uz" ? "Faol" : "Active", type: "checkbox" },
+            ]}
+            defaultValues={{ isActive: true, sortOrder: 0, price: 0 }}
+            displayFn={(item) => ({
+              title: String(item.nameUz),
+              subtitle: String(item.nameRu),
+              meta: `${Number(item.price).toLocaleString()} UZS · ${String(item.estimatedTime)}`,
+              badge: item.isActive ? (lang === "uz" ? "Faol" : "Active") : (lang === "uz" ? "Nofaol" : "Inactive"),
+            })}
+          />
+        );
       case "contactInfo":
         return <ContactInfoSection />;
       case "siteTexts":

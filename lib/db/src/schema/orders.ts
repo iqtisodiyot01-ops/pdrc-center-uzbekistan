@@ -13,6 +13,8 @@ export const productOrdersTable = pgTable("product_orders", {
   status: text("status").notNull().default("pending"),
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   paymentId: text("payment_id"),
+  deliveryZoneName: text("delivery_zone_name"),
+  deliveryPrice: integer("delivery_price").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
