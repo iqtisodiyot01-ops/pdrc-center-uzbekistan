@@ -3,6 +3,7 @@ import { db, contactMessagesTable, usersTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdminPermission, requireAuth } from "../middlewares/auth";
 import { broadcast } from "../lib/ws";
+import { sendContactNotification } from "../lib/telegram";
 
 const router: IRouter = Router();
 
@@ -17,6 +18,7 @@ router.post("/contact-messages", async (req, res) => {
     .values({ name, email, phone, subject, message })
     .returning();
   broadcast({ type: "new_message", payload: { id: msg.id, name, subject: subject ?? "", createdAt: msg.createdAt } });
+  sendContactNotification({ id: msg.id, name, phone, email, subject, message }).catch(console.error);
   res.status(201).json(msg);
 });
 

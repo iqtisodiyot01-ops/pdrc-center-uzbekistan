@@ -1,8 +1,8 @@
+import { useState } from "react";
 import { useTranslation } from "@/lib/i18n";
-import { useCreateBooking } from "@workspace/api-client-react";
 import { useAppStore } from "@/store/use-store";
-import { useToast } from "@/hooks/use-toast";
-import { Phone, MapPin, Mail, Instagram, Send, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import { Phone, MapPin, Mail, Instagram, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { z } from "zod";
 const schema = z.object({
   name: z.string().min(2),
   phone: z.string().min(9),
+  email: z.string().email().optional().or(z.literal("")),
   message: z.string().optional(),
 });
 
@@ -17,28 +18,33 @@ type FormValues = z.infer<typeof schema>;
 
 export default function Contact() {
   const { t } = useTranslation();
-  const { token } = useAppStore();
-  const { toast } = useToast();
+  const { lang } = useAppStore();
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema)
+    resolver: zodResolver(schema),
   });
 
-  const mutation = useCreateBooking({
-    request: { headers: token ? { Authorization: `Bearer ${token}` } : undefined },
-    mutation: {
-      onSuccess: () => {
-        toast({ title: t.contact.success, description: t.contact.success_desc });
-        reset();
-      },
-      onError: () => {
-        toast({ variant: "destructive", title: t.contact.error, description: t.contact.error_desc });
-      }
+  const onSubmit = async (data: FormValues) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      await api.post("/contact-messages", {
+        name: data.name,
+        phone: data.phone,
+        email: data.email || undefined,
+        subject: lang === "uz" ? "Aloqa formi orqali" : lang === "ru" ? "Через форму обратной связи" : "Via contact form",
+        message: data.message || `${lang === "uz" ? "Telefon raqam" : "Phone"}: ${data.phone}`,
+      });
+      setSuccess(true);
+      reset();
+    } catch {
+      setError(lang === "uz" ? "Xato yuz berdi. Qayta urinib ko'ring." : lang === "ru" ? "Произошла ошибка. Попробуйте снова." : "An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  });
-
-  const onSubmit = (data: FormValues) => {
-    mutation.mutate({ data });
   };
 
   return (
@@ -120,53 +126,96 @@ export default function Contact() {
           </div>
         </div>
 
-        {/* Booking Form */}
+        {/* Form */}
         <div className="lg:w-2/3 bg-white p-8 md:p-10 rounded-2xl border border-gray-200">
           <h2 className="text-2xl font-heading font-bold text-[#0f3460] mb-2 leading-snug">{t.contact.form_title}</h2>
           <p className="text-gray-500 mb-8 text-sm">{t.contact.form_desc}</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.your_name}</label>
-                <input
-                  {...register("name")}
-                  autoComplete="name"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                  placeholder="Ali Valiyev"
-                />
-                {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+          {success ? (
+            <div className="flex flex-col items-center justify-center py-14 text-center">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-5">
+                <CheckCircle2 size={44} className="text-green-600" />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.phone_number}</label>
-                <input
-                  {...register("phone")}
-                  autoComplete="tel"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-                  placeholder="+998 __ ___ __ __"
-                />
-                {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
+              <h3 className="text-2xl font-bold text-green-700 mb-2">
+                {lang === "uz" ? "Xabaringiz yuborildi!" : lang === "ru" ? "Сообщение отправлено!" : "Message Sent!"}
+              </h3>
+              <p className="text-gray-500 mb-8 max-w-sm">
+                {lang === "uz"
+                  ? "Tez orada siz bilan bog'lanamiz. Sabr qiling!"
+                  : lang === "ru"
+                    ? "Мы свяжемся с вами в ближайшее время."
+                    : "We will contact you shortly. Thank you!"}
+              </p>
+              <button
+                onClick={() => setSuccess(false)}
+                className="px-6 py-3 bg-blue-700 text-white rounded-xl font-semibold hover:bg-blue-800 transition-colors"
+              >
+                {lang === "uz" ? "Yana xabar yuborish" : lang === "ru" ? "Отправить ещё" : "Send another"}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.your_name}</label>
+                  <input
+                    {...register("name")}
+                    autoComplete="name"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                    placeholder="Ali Valiyev"
+                  />
+                  {errors.name && <p className="text-red-500 text-xs">{errors.name.message}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.phone_number}</label>
+                  <input
+                    {...register("phone")}
+                    autoComplete="tel"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                    placeholder="+998 __ ___ __ __"
+                  />
+                  {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.message_opt}</label>
-              <textarea
-                {...register("message")}
-                rows={4}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-                placeholder={t.contact.message_placeholder}
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  {lang === "uz" ? "Email (ixtiyoriy)" : lang === "ru" ? "Email (необязательно)" : "Email (optional)"}
+                </label>
+                <input
+                  {...register("email")}
+                  autoComplete="email"
+                  type="email"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                  placeholder="ali@example.com"
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              className="w-full bg-blue-700 text-white font-display font-bold uppercase tracking-widest py-4 rounded-xl shadow-md hover:bg-blue-800 hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {mutation.isPending ? <Loader2 className="animate-spin" size={22} /> : t.common.send}
-            </button>
-          </form>
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t.contact.message_opt}</label>
+                <textarea
+                  {...register("message")}
+                  rows={4}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                  placeholder={t.contact.message_placeholder}
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-blue-700 text-white font-display font-bold uppercase tracking-widest py-4 rounded-xl shadow-md hover:bg-blue-800 hover:-translate-y-0.5 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isLoading ? <Loader2 className="animate-spin" size={22} /> : t.common.send}
+              </button>
+            </form>
+          )}
         </div>
 
       </div>

@@ -19,25 +19,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
-  const PUBLIC_ROUTES = ["/login", "/register", "/about", "/delivery", "/payment/success", "/payment/cancel"];
-  const isPublic = PUBLIC_ROUTES.includes(location);
+  const AUTH_REQUIRED_ROUTES = ["/profile"];
+  const requiresAuth = AUTH_REQUIRED_ROUTES.some((r) => location === r || location.startsWith(r + "/"));
 
   useEffect(() => {
-    if (!token && !isPublic) {
+    if (!token && requiresAuth) {
       setLocation("/login");
     }
-  }, [token, location, setLocation, isPublic]);
+  }, [token, location, setLocation, requiresAuth]);
 
   useEffect(() => {
     if (userData) {
       setUser(userData);
     } else if (isError) {
       useAppStore.getState().logout();
-      if (!isPublic) {
+      if (requiresAuth) {
         setLocation("/login");
       }
     }
-  }, [userData, isError, setUser, location, setLocation, isPublic]);
+  }, [userData, isError, setUser, location, setLocation, requiresAuth]);
 
   if (isLoading && token && !user) {
     return (
@@ -51,7 +51,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!token && !isPublic) return null;
+  if (!token && requiresAuth) return null;
 
   if (location === "/admin") {
     return (

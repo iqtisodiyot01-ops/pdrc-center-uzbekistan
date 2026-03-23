@@ -114,6 +114,40 @@ export async function sendBookingNotification(booking: BookingNotification): Pro
   }
 }
 
+export interface ContactNotification {
+  id: number;
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  subject?: string | null;
+  message: string;
+}
+
+export async function sendContactNotification(contact: ContactNotification): Promise<void> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+
+  const lines = [
+    `✉️ *Yangi xabar \\#${contact.id}*`,
+    ``,
+    `👤 *Ism:* ${escapeMarkdown(contact.name)}`,
+  ];
+  if (contact.phone) lines.push(`📞 *Telefon:* ${escapeMarkdown(contact.phone)}`);
+  if (contact.email) lines.push(`📧 *Email:* ${escapeMarkdown(contact.email)}`);
+  if (contact.subject) lines.push(`📌 *Mavzu:* ${escapeMarkdown(contact.subject)}`);
+  lines.push(``, `💬 *Xabar:* ${escapeMarkdown(contact.message)}`);
+
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: lines.join("\n"), parse_mode: "MarkdownV2" }),
+    });
+  } catch (err) {
+    console.error("Failed to send Telegram contact notification:", err);
+  }
+}
+
 function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, "\\$&");
 }
