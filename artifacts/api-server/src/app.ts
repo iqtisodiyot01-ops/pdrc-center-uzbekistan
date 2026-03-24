@@ -13,6 +13,9 @@ app.set("trust proxy", 1);
 const PROD_ORIGINS = [
   process.env.APP_URL || "https://pdrcenteruzbekistan.com",
   "https://pdrcenteruzbekistan.com",
+  "https://www.pdrcenteruzbekistan.com",
+  "http://pdrcenteruzbekistan.com",
+  "http://www.pdrcenteruzbekistan.com",
 ];
 
 const allowedOrigins = process.env.NODE_ENV === "production"
@@ -85,8 +88,9 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   if (res.headersSent) return;
 
   const status = (err as any).status || (err as any).statusCode || 500;
+  const isServerError = status >= 500;
   res.status(status).json({
-    error: process.env.NODE_ENV === "production"
+    error: (isServerError && process.env.NODE_ENV === "production")
       ? "Ichki server xatosi"
       : err.message,
   });

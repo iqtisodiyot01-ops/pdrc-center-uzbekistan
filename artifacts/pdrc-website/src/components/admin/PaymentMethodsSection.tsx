@@ -187,7 +187,7 @@ export function PaymentMethodsSection() {
       toast({ title: t.saved });
       qc.invalidateQueries({ queryKey: ["site-settings"] });
     },
-    onError: () => toast({ title: lang === "uz" ? "Xatolik yuz berdi" : "Error", variant: "destructive" }),
+    onError: (err: Error) => toast({ title: lang === "uz" ? "Xatolik" : "Error", description: err.message, variant: "destructive" }),
   });
 
   const update = <K extends keyof PaymentMethodsConfig>(key: K, patch: Partial<PaymentMethodsConfig[K]>) => {

@@ -292,28 +292,29 @@ export default function DeliverySection() {
   const createZone = useMutation({
     mutationFn: (d: Omit<Zone, "id">) => api.post("/admin/delivery-zones", d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-delivery-zones"] }); qc.invalidateQueries({ queryKey: ["delivery-zones"] }); setShowZoneForm(false); toast({ title: "Zona qo'shildi" }); },
-    onError: () => toast({ variant: "destructive", title: "Xato yuz berdi" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message }),
   });
   const updateZone = useMutation({
     mutationFn: ({ id, ...d }: Zone) => api.put(`/admin/delivery-zones/${id}`, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-delivery-zones"] }); qc.invalidateQueries({ queryKey: ["delivery-zones"] }); setEditZone(null); toast({ title: "Yangilandi" }); },
-    onError: () => toast({ variant: "destructive", title: "Xato yuz berdi" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message }),
   });
   const deleteZone = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/delivery-zones/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-delivery-zones"] }); qc.invalidateQueries({ queryKey: ["delivery-zones"] }); toast({ title: "O'chirildi" }); },
+    onError: (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message }),
   });
 
   /* ── Payment mutations ── */
   const createPay = useMutation({
     mutationFn: (d: Omit<PagePayment, "id">) => api.post("/admin/delivery-page-payments", d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-delivery-page-payments"] }); qc.invalidateQueries({ queryKey: ["delivery-page-payments"] }); setShowPayForm(false); toast({ title: "To'lov usuli qo'shildi" }); },
-    onError: () => toast({ variant: "destructive", title: "Xato yuz berdi" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message }),
   });
   const updatePay = useMutation({
     mutationFn: ({ id, ...d }: PagePayment) => api.put(`/admin/delivery-page-payments/${id}`, d),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-delivery-page-payments"] }); qc.invalidateQueries({ queryKey: ["delivery-page-payments"] }); setEditPay(null); toast({ title: "Yangilandi" }); },
-    onError: () => toast({ variant: "destructive", title: "Xato yuz berdi" }),
+    onError: (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message }),
   });
   const deletePay = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/delivery-page-payments/${id}`),

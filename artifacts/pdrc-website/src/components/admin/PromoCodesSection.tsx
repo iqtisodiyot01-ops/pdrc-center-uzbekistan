@@ -42,19 +42,24 @@ export function PromoCodesSection() {
     queryFn: () => api.get("/admin/promo-codes"),
   });
 
+  const onErr = (err: Error) => toast({ variant: "destructive", title: "Xatolik", description: err.message });
+
   const createMut = useMutation({
     mutationFn: (data: Record<string, unknown>) => api.post("/admin/promo-codes", data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["promo-codes"] }); setShowForm(false); setForm({ ...emptyForm }); toast({ title: "Saqlandi" }); },
+    onError: onErr,
   });
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) => api.patch(`/admin/promo-codes/${id}`, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["promo-codes"] }); setEditId(null); toast({ title: "Yangilandi" }); },
+    onError: onErr,
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => api.delete(`/admin/promo-codes/${id}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["promo-codes"] }); toast({ title: "O'chirildi" }); },
+    onError: onErr,
   });
 
   const toggleActive = (code: PromoCode) => updateMut.mutate({ id: code.id, data: { isActive: !code.isActive } });
