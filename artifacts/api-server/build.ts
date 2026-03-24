@@ -33,11 +33,13 @@ const allowlist = [
   "pino-http",
   "stripe",
   "uuid",
-  "ws",
-  "xlsx",
   "zod",
   "zod-validation-error",
 ];
+
+// These packages are always treated as externals (not bundled)
+// so they must be installed in node_modules on the server
+const forceExternal = ["ws", "xlsx", "cookie-parser", "bcryptjs"];
 
 async function buildAll() {
   const distDir = path.resolve(__dirname, "dist");
@@ -66,7 +68,7 @@ async function buildAll() {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
-    external: externals,
+    external: [...new Set([...externals, ...forceExternal])],
     logLevel: "info",
   });
 }
